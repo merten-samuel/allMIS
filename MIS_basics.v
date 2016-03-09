@@ -33,6 +33,16 @@ Definition Ind_Set_lGraph (G : lGraph) : list nat -> Prop :=
 Definition MaximalIndSet_lGraph (G : lGraph) : list nat -> Prop := 
   MaximalIndSet (lV G) (flatten_EdgesGraph G).
 
+Definition MaximalIndSet_cp_lGraph (G : lGraph) : list nat -> Prop := 
+  MaximalIndSet_contrapos (lV G) (flatten_EdgesGraph G).
+
+Theorem MaximalIndSet_eq_lGraph :
+  forall G l, MaximalIndSet_lGraph G l <-> MaximalIndSet_cp_lGraph G l.
+Proof.
+  unfold MaximalIndSet_lGraph.
+  unfold MaximalIndSet_cp_lGraph.
+  intros. apply MaximalIndSet_eq.
+Qed.
 
 Definition VertexConnected_lGraph G x l:=
   vertexConnected (flatten_EdgesGraph G) x l.
@@ -58,14 +68,13 @@ Proof.
     apply flatten_EdgesGraph_spec1 in H.
     destruct H as [H0 [H1 H2]]. split; try split; try assumption.
     apply flatten_EdgesGraph_spec1. simpl in H2.
-    SearchAbout reduceLEdges. apply reduceLEdges_preservation in H2.
+    apply reduceLEdges_preservation in H2.
     destruct H2 as [H2 [H3 H4]]. exists H2. exists H3. assumption.
   }
   destruct H as [H0 [H1 H2]].
   apply flatten_EdgesGraph_spec1. simpl.
   exists H1. exists H2. apply flatten_EdgesGraph_spec1 in H0.
   destruct H0 as [H3 [H4 H0]].
-  SearchAbout reduceLEdges.
   apply reduceLEdges_spec with
     (H00 := H3)
     (H01 := H4).
@@ -204,7 +213,7 @@ Theorem rmv_neighbors_preserves_IndSet_ext :
   forall v G l, Ind_Set_lGraph G l -> v < (lV G) -> 
     Ind_Set_lGraph G (v :: (rmvNeighbors v G l)).
 Proof.
-  intros. SearchAbout IndSet. induction l; split.
+  intros. induction l; split.
   {
     simpl. intros V' H1. destruct H1 as [H1 | H1];
     [subst | inversion H1]. assumption.
@@ -240,6 +249,8 @@ Theorem LFMIS_dec : forall G l l', {LFMIS G l l'} + {~ LFMIS G l l'}.
 Proof.
   intros. apply list_eq_dec.
 Defined.
+
+Definition isMIS G l := LFMIS_dec G l l. 
 
 Theorem remove_incl :
   forall (A : Type) (L : list A) (H0 : forall x y, {x = y} + {x <> y}) (z : A),
@@ -334,64 +345,71 @@ Proof.
     auto.
   }
   {
-    intros. intros H2. inversion H.
-    specialize (H4 x0). apply H4.
-    intros H5. apply H1. right. auto.
-    simpl. constructor. intros y H5.
-    inversion H2. assert (In y (x0 :: x :: l)).
-    destruct H5. left. auto. right. right. auto.
-    apply H6 in H8. assert (y <> x). intros H9.
-    subst. destruct H5. apply H1. left. auto.
-    apply H3 in H5. simpl in H5. omega.
-    omega. intros y z H5 H6 H7.
-    apply LiftGraph_FlatEdge_spec in H7.
-    inversion H2. specialize (H9 y z).
-    apply H9. destruct H5. left. auto.
-    right. right. auto. destruct H6.
-    left. auto. right. right. auto.
-    destruct H7 as [H7 _]. auto.
-    apply LiftGraph_FlatEdge_spec. 
-    split. auto. split. apply H8.
-    destruct H5. left. auto.
-    right. right. auto. apply H8.
-    destruct H6. left. auto.
-    right. right. auto.
+    intros. inversion H. destruct (eq_nat_dec x0 x).
+    left. auto. right. apply H3. constructor.
+    simpl. intros y H5. assert (In y (x0::x::l)).
+    destruct H5 as [H5 | H5]. left. auto. right.
+    right. auto. apply H1 in H4. destruct H5 as [H5 | H5].
+    omega. apply H2. auto. inversion H1. 
+    intros a b h1 h2 h3. specialize (H5 a b).
+    apply H5. destruct h1 as [h1 | h1]; [left | right;right]; auto.
+    destruct h2 as [h2 | h2]; [left | right;right]; auto.
+    apply LiftGraph_FlatEdge_spec.
+    apply LiftGraph_FlatEdge_spec in h3.
+    destruct h3 as [h3 [h3' h3'']].
+    repeat split; auto; omega.
   }
 Qed.
+    
 
 Theorem l2_spec_mkCandidateSets : forall x l G,
   MaximalIndSet_lGraph (LiftGraph x G) l ->
   ~ Independent_lGraph (LiftGraph (S x) G) (x::l) ->
     MaximalIndSet_lGraph (LiftGraph (S x) G) l.
 Proof.
-  intros. destruct H as [[H1 H2] H3]. repeat split.
+  intros. constructor; intros.
   {
-    simpl. intros s H4. apply H1 in H4. simpl in H4. omega.
-  }
-  {
-    unfold Independent. intros.
-    specialize (H2 x0 y); try assumption.
-    intros H5. apply H2; auto. apply LiftGraph_FlatEdge_spec.
-    apply LiftGraph_FlatEdge_spec in H5. destruct H5 as [H5 [H6 H7]].
-    simpl in H1. repeat split; try assumption; apply H1; assumption.
-  }
-  {
-    intros. intros H4. destruct H4 as [H4 H5]. assert (x0 = x) as H6.
-    assert (x0 < S x). apply H4. left. reflexivity.
-    assert (x0 = x \/ x0 < x) as H7 by omega. destruct H7 as [H7 | H7].
-    assumption. apply False_rec. apply H3 in H. apply H.
-    simpl. split. intros s' H8. destruct H8 as [H8 | H8].
-    omega. apply H1. assumption.
-    unfold Independent. intros. intros H10.
-    specialize (H5 x1 y). apply H5. apply LiftGraph_FlatEdge_spec in H10.
-    destruct H10 as [H10 [H11 H12]]. auto. auto.
+    simpl. inversion H. constructor. 
+    intros y H3. apply H in H3. simpl in H3. omega.
+    intros a b H3 H4 H5. inversion H1.
+    specialize (H7 a b). apply H7; auto.
+    apply LiftGraph_FlatEdge_spec in H5.
+    destruct H5 as [H5 [H5' H5'']].
     apply LiftGraph_FlatEdge_spec.
-    repeat split; try (assumption; omega).
-    apply LiftGraph_FlatEdge_spec in H10.
-    destruct H10. auto. apply H4. auto.
-    apply H4. auto. apply H0. subst. auto.
+    repeat split; auto.
   }
-Qed. 
+  {
+    simpl in *. assert (x0 < x) as H2.
+    destruct (eq_nat_dec x0 x). subst.
+    inversion H1. contradiction.
+    assert (In x0 (x0::l)). left. auto.
+    apply H1 in H2. omega.
+    apply H. simpl. constructor.
+    intros y H3. destruct H3 as [H3 | H3].
+    omega. apply H. auto. inversion H1.
+    intros a b h h0 h1. apply (H4 a b h h0).
+    apply LiftGraph_FlatEdge_spec.
+    apply LiftGraph_FlatEdge_spec in h1.
+    destruct h1 as [h1 [h1' h1'']].
+    repeat split; auto.
+  }
+Qed.
+ 
+
+Theorem IndSet_FE_step :
+  forall x G l,
+  IndSet x (flatten_EdgesGraph (LiftGraph x G)) l -> 
+    IndSet (S x) (flatten_EdgesGraph (LiftGraph (S x) G)) l.
+Proof.
+  intros. constructor. inversion H.
+  intros y H2. apply H0 in H2. omega.
+  intros a b H0 H1 H2. inversion H. apply (H4 a b);
+  subst; auto. apply LiftGraph_FlatEdge_spec.
+  apply LiftGraph_FlatEdge_spec in H2.
+  destruct H2 as [h1 [h1' h1'']].
+  repeat split; auto.
+Qed.
+  
 
 Theorem l3_spec_mkCandidateSets :
   forall l G x, MaximalIndSet_lGraph (LiftGraph (S x) G) l -> 
@@ -415,16 +433,10 @@ Proof.
     repeat split; auto.
   }
   {
-    intros. simpl. intros H4. apply (H3 x0); try assumption.
-    simpl. destruct H4 as [H4 H5 H6]. repeat split.
-    intros y H6. apply H4 in H6. omega.
-    intros y z H6 H7 H8. apply (H5 y z); auto.
-    apply LiftGraph_FlatEdge_spec.
-    apply LiftGraph_FlatEdge_spec in H8. destruct H8 as [H8 [H9 H10]].
-    auto.
+    intros. simpl in *. apply (H3 x0); try assumption.
+    simpl. apply IndSet_FE_step. auto. 
   }
-Qed. 
-
+Qed.
 
 Theorem l4_spec_mkCandidateSets :
   forall G l x, Ind_Set_lGraph (LiftGraph (S x) G) l ->
@@ -460,21 +472,22 @@ Theorem l8_spec_mkCandidateSets : forall l x,
   MaximalIndSet_lGraph (LiftGraph x nil_lGraph) l ->
   (forall y, y < x <-> In y l).
 Proof.
-  intros l. induction l; intros. apply MIS_nil_iff_0 in H.
-  simpl in H. subst. split; intros H0; inversion H0. graphax_tac.
-  split; intros.
+  split.
   {
-    assert ({In y (a::l)} + {~ In y (a::l)}) as H1. (apply (in_dec eq_nat_dec)).
-    destruct H1 as [H1 | H1]. assumption.
-    apply False_rec. destruct H as [[H2 H3] H4].
-    specialize (H4 y). apply H4 in H1.
-    apply H1. simpl. split. intros z H5. destruct H5 as [H5 | H5].
-    subst. assumption. apply H2. assumption. rewrite -> l7_spec_mkCandidateSets.
-    unfold Independent. intros. intros H6.
-    inversion H6.
+    intros. apply H. simpl.
+    constructor.
+    {
+      intros a H1. destruct H1 as [H1 | H1].
+      subst. auto. apply H. auto.
+    }
+    {
+      rewrite -> l7_spec_mkCandidateSets.
+      intros a b H1 H2 H3. inversion H3.
+    }
   }
   {
-    destruct H as [[H H1] H2]. apply H in H0. simpl in H0. assumption.
+    intros.
+    apply H in H0. auto.
   }
 Qed.
 
@@ -512,8 +525,8 @@ Proof.
   {
     assert ({In x l} + {~ In x l}) as H2 by apply (in_dec eq_nat_dec).
     destruct H2 as [H2 | H2]. assumption.
-    destruct H as [[H H'] H'']. apply H'' in H2.
-    apply False_rec. apply H2. split. intros y H3.
+    destruct H as [[H H'] H'']. apply H''.
+    constructor. intros a H3.
     destruct H3 as [H3 | H3]. subst. destruct H0 as [[H0 H0''] H0'].
     apply H0 in H1. assumption. apply H in H3. assumption.
     unfold Independent. intros. destruct H3 as [H3 | H3];
@@ -561,8 +574,8 @@ Proof.
   intros. apply MkMaximalIndSet_fix. assumption.
 Qed. 
  
-Theorem l10_spec_mkCandidateSets : forall l G x,
-  MaximalIndSet_lGraph (LiftGraph (S x) G) l ->
+Theorem l10_spec_mkCandidateSets_cp : forall l G x,
+  MaximalIndSet_cp_lGraph (LiftGraph (S x) G) l ->
   In x l ->
   list_eq
     l
@@ -668,7 +681,19 @@ Proof.
     }
   }
 Qed.
- 
+
+Theorem l10_spec_mkCandidateSets : forall l G x,
+  MaximalIndSet_lGraph (LiftGraph (S x) G) l ->
+  In x l ->
+  list_eq
+    l
+    (x::rmvNeighbors x (LiftGraph (S x) G) 
+          (MkMaximalIndSet_lGraph (LiftGraph x G) (rmv x l))).
+Proof.
+  intros. apply MaximalIndSet_eq_lGraph in H.
+  apply l10_spec_mkCandidateSets_cp; auto.
+Qed.
+
 Theorem rmv_pres_list_eq :
   forall x l l', list_eq l l' -> list_eq (rmv x l) (rmv x l').
 Proof.
@@ -842,6 +867,6 @@ Proof.
   exists l2. split; [|right]; auto.
 Qed.
 
-Inductive NoDups' : list (list nat) -> Prop :=
-| NoDup_nil : NoDups' nil
-| NoDup_cons : forall l L, ~ list_eq_in l L -> NoDups' L -> NoDups' (l::L).
+Inductive NoDuplicates' : list (list nat) -> Prop :=
+| NoDup_nil : NoDuplicates' nil
+| NoDup_cons : forall l L, ~ list_eq_in l L -> NoDuplicates' L -> NoDuplicates' (l::L).

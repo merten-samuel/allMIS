@@ -10,7 +10,7 @@ Require Import all_MIS.
 Require Import all_MIS_sound.
 
 Theorem PrintMIS_unique :
-  forall G, NoDups' (PrintMIS G).
+  forall G, NoDuplicates' (PrintMIS G).
 Proof.
   intros G. induction G using InducedGraph_ind.
   unfold PrintMIS. simpl. constructor. intros H.
@@ -59,14 +59,10 @@ Proof.
         simpl. apply H0. left. auto.
       }
       {
-        apply mkCandidateSetsP.
-        symmetry. auto.
-      }
-      {
         intros. apply H1. unfold mkCandidateSets.
         simpl lV. fold mkCandidateSets.
         cbv iota beta. destruct independent_lGraph.
-        right. auto. repeat (destruct LFMIS_dec);
+        right. auto. unfold isMIS. repeat (destruct LFMIS_dec);
         repeat right; auto.
       }
       {
@@ -89,7 +85,7 @@ Proof.
           intros. apply H1. unfold mkCandidateSets.
           simpl lV. fold mkCandidateSets.
           cbv iota beta. destruct independent_lGraph.
-          right. auto. repeat (destruct LFMIS_dec);
+          right. auto. unfold isMIS. repeat (destruct LFMIS_dec);
           repeat right; auto.
         }
         {
@@ -98,6 +94,7 @@ Proof.
       }
     (*End (x::a) in children *)
     }
+    unfold isMIS.
     destruct LFMIS_dec.
     destruct LFMIS_dec.
     { (* Begin (x::rmvNeighb x a) in Head *)
@@ -158,6 +155,7 @@ Proof.
               subst. assert (~ In j (rmvNeighbors i (LiftGraph (S i) G) a)).
               intros h0. apply rmv_neighbors_spec in h0.
               destruct h0 as [_ h0]. contradiction.
+              apply MaximalIndSet_eq in h.
               inversion h. apply H4 in H2. 
               apply H2. constructor.
               intros k h0. apply H.
@@ -178,6 +176,7 @@ Proof.
               intros h1. apply rmv_neighbors_spec in h1.
               destruct h1 as [_ h1]. 
               apply flatten_Edges_symm in h2. contradiction.
+              apply MaximalIndSet_eq in h. 
               inversion h. apply H4 in H2. 
               apply H2. constructor.
               intros k h1. apply H.
@@ -203,7 +202,7 @@ Proof.
             auto.
           }
           {
-            apply mkCandidateSetsP. reflexivity.
+            reflexivity.
           }          
           {
             destruct H4' as [H4' | H4'].
@@ -275,10 +274,6 @@ Proof.
             left. auto.
           }
           {
-            apply mkCandidateSetsP. 
-            reflexivity.
-          }
-          {
             apply H5. apply list_eq_in_spec with (l2 := l2).
             apply list_eq_symmetric. auto. auto.
           }
@@ -288,7 +283,7 @@ Proof.
             unfold mkCandidateSets.
             simpl lV. fold mkCandidateSets.
             cbv iota beta. destruct independent_lGraph.
-            right. auto. repeat (destruct LFMIS_dec);
+            right. auto. unfold isMIS. repeat (destruct LFMIS_dec);
             repeat right; auto. auto.
           }
         }
@@ -308,10 +303,6 @@ Proof.
         left. auto.
       }
       {
-        apply mkCandidateSetsP. 
-        reflexivity.
-      }
-      {
         apply H5. apply list_eq_in_spec with (l2 := l1).
         apply list_eq_symmetric. auto. auto.
       }
@@ -321,7 +312,7 @@ Proof.
         unfold mkCandidateSets.
         simpl lV. fold mkCandidateSets.
         cbv iota beta. destruct independent_lGraph.
-        right. auto. repeat (destruct LFMIS_dec);
+        right. auto. unfold isMIS. repeat (destruct LFMIS_dec);
         repeat right; auto. auto.
       }
     }
@@ -340,10 +331,6 @@ Proof.
         left. auto.
       }
       {
-        apply mkCandidateSetsP. 
-        reflexivity.
-      }
-      {
         apply H5. apply list_eq_in_spec with (l2 := l1).
         apply list_eq_symmetric. auto. auto.
       }
@@ -353,7 +340,7 @@ Proof.
         unfold mkCandidateSets.
         simpl lV. fold mkCandidateSets.
         cbv iota beta. destruct independent_lGraph.
-        right. auto. repeat (destruct LFMIS_dec);
+        right. auto. unfold isMIS. repeat (destruct LFMIS_dec);
         repeat right; auto. auto.
       }
     }

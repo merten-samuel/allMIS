@@ -12,13 +12,14 @@ Require Import all_MIS_sound.
 Theorem PrintMIS_complete :
   forall G l, MaximalIndSet_lGraph G l -> exists l', list_eq l' l /\ In l' (PrintMIS G).
 Proof.
-    intros G. induction G using InducedGraph_ind; intros.
+    intros G.  induction G using InducedGraph_ind; intros.
   {
   (* Base Case *) 
     exists nil. simpl. apply TrivialIndSet in H. subst.
     split. apply list_eq_ref. left. reflexivity. reflexivity.
   }
   {
+    rewrite -> MaximalIndSet_eq_lGraph in *.  
     assert ({In x l} + {~In x l}) as H0
       by (apply list_in_dec; apply eq_nat_dec).
     destruct H0 as [H0 | H0].
@@ -29,7 +30,7 @@ Proof.
           2.) removing x from l fails to produce a LFMIS in (LG x G) 
        *)
        (* Case 1 *)
-     case (LFMIS_dec (LiftGraph x G) (rmv x l) (rmv x l)); intros H2.       
+     case (isMIS (LiftGraph x G) (rmv x l)); intros H2.       
      {
        assert (list_eq l (x::rmv x l)). apply remove_inv. assumption.
        assert (MaximalIndSet_lGraph (LiftGraph x G) (rmv x l)) as H3.
@@ -67,6 +68,7 @@ Proof.
               (x :: rmvNeighbors x (LiftGraph (S x) G)
                       (MkMaximalIndSet_lGraph (LiftGraph x G) (rmv x l)))) as H3.
       {
+        apply MaximalIndSet_eq_lGraph in H.
         apply l10_spec_mkCandidateSets in H.
         assumption. assumption.
       }
@@ -136,7 +138,7 @@ Proof.
         assert ({x0 = x} + {x0 <> x}) as H10 by apply eq_nat_dec.
         destruct H10. left. subst. reflexivity.
         right. apply H4. assert (In x0 (rmv x l)). apply remove_spec.
-        split; assumption. SearchAbout MkMaximalIndSet.
+        split; assumption.
         assert (exists l'', MkMaximalIndSet_lGraph (LiftGraph x G) (rmv x l)=
                             l''++(rmv x l)).
         {
@@ -151,7 +153,7 @@ Proof.
         assert ({y0 = x} + {y0 <> x}) as H10 by apply eq_nat_dec.
         destruct H10. left. subst. reflexivity.
         right. apply H4. assert (In y0 (rmv x l)). apply remove_spec.
-        split; assumption. SearchAbout MkMaximalIndSet.
+        split; assumption.
         assert (exists l'', MkMaximalIndSet_lGraph (LiftGraph x G) (rmv x l)=
                             l''++(rmv x l)).
         {
@@ -194,7 +196,7 @@ Proof.
         assumption. assumption.
       }
       simpl. unfold MaximalIndSet_lGraph in H.
-      simpl in H. assumption.
+      simpl in H. apply MaximalIndSet_eq_lGraph in H. assumption.
       unfold LFMIS. apply list_eq_symmetric in H4.
       apply list_eq_trans with
         (MkMaximalIndSet_lGraph (LiftGraph x G) (rmv x l)).
@@ -250,14 +252,16 @@ Proof.
   }
   (*x isn't in the MIS *)
   {
+    apply MaximalIndSet_eq_lGraph in H.
     assert (MaximalIndSet_lGraph (LiftGraph x G) l)
       by (apply l3_spec_mkCandidateSets in H; assumption).
+    apply MaximalIndSet_eq_lGraph in H.
     apply IHG in H1.
     destruct H1 as [l' [H2 H3]].
     exists l'. split. assumption.
     assert (MaximalIndSet_lGraph (LiftGraph (S x) G) l').
     apply eq_preserves_MIS with (X := l). apply list_eq_symmetric.
-    assumption. simpl. assumption. 
+    assumption. simpl. apply MaximalIndSet_eq_lGraph in H. assumption. 
     unfold PrintMIS. simpl.
     unfold PrintMIS in H3. simpl in H3.
     rewrite -> LiftGraph_red.
@@ -269,7 +273,7 @@ Proof.
       simpl (lV (LiftGraph (S x) G)). cbv iota beta.
       fold mkCandidateSets.
       remember (independent_lGraph (LiftGraph (S x) G) (x :: l')).
-      destruct b.
+      destruct b. apply MaximalIndSet_eq_lGraph in H1.
       destruct H1 as [H1 H1']. specialize (H1' x).
       assert (~ In x l') as H3. intros H0'. apply H0.
       apply H2. assumption.
@@ -283,7 +287,7 @@ Proof.
       apply independent_spec in H4; graphax_tac.
       assumption. symmetry in Heqb.
       contradiction.
-      destruct LFMIS_dec.
+      destruct isMIS.
     {
       destruct LFMIS_dec. right. left. reflexivity.
       left. reflexivity.
@@ -295,6 +299,7 @@ Proof.
   apply IHl0 in H3. unfold mkCandidateSets.
   simpl (lV (LiftGraph (S x) G)).
   fold mkCandidateSets. cbv iota beta.
+  unfold isMIS.
   destruct independent_lGraph; try (repeat destruct LFMIS_dec);
   repeat right; assumption. omega.
   }

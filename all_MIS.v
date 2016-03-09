@@ -15,8 +15,7 @@ Fixpoint mkCandidateSets (G : lGraph) (l : list (list nat)) : list (list nat) :=
     | nil => nil
     | cons cand l' =>
         if independent_lGraph G (V' :: cand) then (V' :: cand) :: mkCandidateSets G l'
-        else if LFMIS_dec G (V' :: rmvNeighbors V' G cand)
-                            (V' :: rmvNeighbors V' G cand) (*is this dude a MIS *)
+        else if isMIS G (V' :: rmvNeighbors V' G cand)
              then if LFMIS_dec (LiftGraph V' G) (rmvNeighbors V' G cand) cand
                   then (V' :: rmvNeighbors V' G cand) :: cand :: mkCandidateSets G l'
                   else cand :: mkCandidateSets G l'
@@ -83,7 +82,7 @@ Proof.
             else independent_lGraph G a) eqn:H.
   { intros H3. rewrite <-H3. constructor; auto. rewrite <-H2. apply IHLin; auto.
   }
-  destruct (LFMIS_dec G (n :: rmvNeighbors n G a) (n :: rmvNeighbors n G a)) eqn:H3.
+  destruct (isMIS G (n :: rmvNeighbors n G a)) eqn:H3.
   { destruct (LFMIS_dec (LiftGraph n G) (rmvNeighbors n G a) a) eqn:H4.
     { intros H5. rewrite <-H5. constructor; auto. rewrite <-H2.
       apply IHLin; auto.
@@ -104,21 +103,21 @@ Proof.
   rewrite <-H. auto.
   rewrite <-H. simpl in H1. rewrite H1. f_equal. auto.
   rewrite <-H. simpl in H1. rewrite H1.
-  destruct (LFMIS_dec G (x :: rmvNeighbors x G cand) (x :: rmvNeighbors x G cand)).
+  destruct (isMIS G (x :: rmvNeighbors x G cand)).
   destruct (LFMIS_dec (LiftGraph x G) (rmvNeighbors x G cand) cand).
   f_equal; auto.
   f_equal; auto.
   contradiction.
   contradiction.
   rewrite <-H. simpl in H1. rewrite H1.
-  destruct (LFMIS_dec G (x :: rmvNeighbors x G cand) (x :: rmvNeighbors x G cand)).
+  destruct (isMIS G (x :: rmvNeighbors x G cand)).
   destruct (LFMIS_dec (LiftGraph x G) (rmvNeighbors x G cand) cand).
   contradiction.
   f_equal; auto.
   f_equal; auto.
   rewrite <-H.
   simpl in H1. rewrite H1.
-  destruct (LFMIS_dec G (x :: rmvNeighbors x G cand) (x :: rmvNeighbors x G cand)).
+  destruct (isMIS G (x :: rmvNeighbors x G cand)).
   contradiction.
   f_equal; auto.
 Qed.
@@ -177,8 +176,9 @@ Proof.
   unfold mkCandidateSets. simpl (lV (LiftGraph (S x) G)).
   cbv beta iota. fold mkCandidateSets.
   destruct (independent_lGraph (LiftGraph (S x) G) (x :: a)).
-  right. assumption. try repeat destruct LFMIS_dec; repeat right;
-  assumption. omega.
+  right. assumption. destruct isMIS.
+  destruct LFMIS_dec; repeat right;
+  assumption. right. auto. omega.
 Qed.
 
 Theorem l12_spec_mkCandidateSets :
@@ -217,15 +217,14 @@ Proof.
   unfold independent_lGraph in Heqb.
   apply independent_spec in Heqb; graphax_tac.
   contradiction.
-  destruct LFMIS_dec; try destruct LFMIS_dec;
+  destruct isMIS; try destruct LFMIS_dec;
   try rewrite -> LiftGraph_red in n; try contradiction.
-  left. reflexivity. omega. apply (IHL l x G) in H; try assumption.
+  left. auto. omega. apply (IHL l x G) in H; try assumption.
   unfold mkCandidateSets.
   simpl (lV (LiftGraph (S x) G)). cbv iota beta. fold mkCandidateSets.
-  unfold independent_lGraph.
-  destruct (independent).
-  right. assumption. repeat destruct LFMIS_dec. right. right. assumption.
-  right. assumption. right. assumption.
+  unfold independent_lGraph.  destruct (independent).
+  right. auto. destruct isMIS. destruct LFMIS_dec. 
+  right. right. auto. right. auto. right. auto.
 Qed.
 
 Lemma MkMaximalIndSet_spec2' : forall G x,
@@ -253,7 +252,8 @@ Proof.
   intros.
   assert ({In y l} + {~In y l}) as H2 by apply (in_dec eq_nat_dec).
   destruct H2 as [H2 | H2]. left. assumption. 
-  right. destruct H0 as [H0 H0'].
+  right. apply MaximalIndSet_eq_lGraph in H0.
+  destruct H0 as [H0 H0'].
   apply H0' in H2. simpl in H2.
   case_eq (independent_lGraph (LiftGraph (S x) G) (y::l)).
   {
@@ -390,10 +390,10 @@ Theorem form1 :
     lV G = S x -> 
     ~ In x l ->
     In l Lout ->
-    mkCS (lV G) G Lin Lout ->
+    mkCandidateSets G Lin = Lout ->
       In l Lin.
 Proof.
-  intros. induction H2. 
+  intros. apply mkCandidateSetsP in H2. induction H2. 
   {
     omega.
   }
@@ -445,11 +445,13 @@ Theorem form2 :
     In l Lout ->
     (forall l', In l' Lin -> MaximalIndSet_lGraph (LiftGraph x G) l') ->
     MaximalIndSet_lGraph (LiftGraph x G) (rmv x l) -> 
-    mkCS (lV G) G Lin Lout ->
+    mkCandidateSets G Lin = Lout ->
     (forall l', In l' Lout -> MaximalIndSet_lGraph G l') ->
       In (rmv x l) Lin.
 Proof.
-  intros. induction H4.
+  intros.
+  apply MaximalIndSet_eq_lGraph in H3.
+  apply mkCandidateSetsP in H4. induction H4.
   {
     omega.
   }
@@ -480,8 +482,9 @@ Proof.
         assert (list_eq cand (rmv x (rmvNeighbors x0 G cand))).
         rewrite -> TBE. split; intros.
         destruct (in_dec eq_nat_dec x1 (rmvNeighbors x0 G cand)).
-        auto.
+        auto. apply MaximalIndSet_eq_lGraph in H3.
         apply eq_preserves_MIS with (Y:= (rmvNeighbors x0 G cand)) in H3.
+        apply MaximalIndSet_eq_lGraph in H3. 
         apply H3 in n. apply False_rec. apply n.
         constructor.
         simpl. intros y h. destruct h as [h | h].
@@ -569,10 +572,10 @@ Theorem form3 :
     In l Lout ->
     (forall l', In l' Lin -> MaximalIndSet_lGraph (LiftGraph x G) l') ->
     ~ MaximalIndSet_lGraph (LiftGraph x G) (rmv x l) -> 
-    mkCS (lV G) G Lin Lout ->
+    mkCandidateSets G Lin = Lout ->
       exists l', LFMIS (LiftGraph x G) (rmv x l) l' /\ In l' Lin.
 Proof.
-  intros. induction H4.
+  intros.  apply mkCandidateSetsP in H4. induction H4.
   {
     omega.
   }

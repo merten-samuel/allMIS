@@ -33,7 +33,7 @@ Proof.
     assumption.
   }
   {
-    destruct LFMIS_dec.
+    destruct isMIS.
     {
       destruct LFMIS_dec.
       {

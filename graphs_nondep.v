@@ -23,8 +23,23 @@ Inductive IndSet (X : list nat) : Prop :=
 Inductive MaximalIndSet (X : list nat) : Prop :=
 | defMaximalIndSet :
     IndSet X ->
-    (forall x, ~ In x X -> ~ IndSet (x::X)) ->
+    (forall x, IndSet (x::X) -> In x X) ->
       MaximalIndSet X.
+
+Inductive MaximalIndSet_contrapos (X : list nat) : Prop :=
+| defMaximalIndSet_contrapos :
+    IndSet X ->
+    (forall x, ~ In x X -> ~ IndSet (x::X)) ->
+      MaximalIndSet_contrapos X.
+
+Theorem MaximalIndSet_eq : forall X, MaximalIndSet X <-> MaximalIndSet_contrapos X.
+Proof.
+  split; intros; constructor; intros. inversion H. auto.
+  inversion H. intros Hcontra. apply H0. apply H2. auto.
+  inversion H. auto. inversion H. destruct (in_dec eq_nat_dec x X).
+  auto. apply H2 in n. contradiction.
+Qed.
+  
 
 Theorem validSetRecr : 
   forall (x : nat) (X : list nat), ValidSet (x::X) -> ValidSet X.
@@ -514,7 +529,7 @@ Qed.
  (*Find a limit on expanding the S' in the proof below *)
 Theorem MkMaximalIndSet_spec2 : forall X, IndSet X -> MaximalIndSet (MkMaximalIndSet X).
 Proof.
-  intros. constructor.
+  intros. apply MaximalIndSet_eq. constructor.
   apply MkMaximalIndSet_spec1. auto.
   intros. assert (x < V \/ x >= V).
   omega.
@@ -544,7 +559,7 @@ Qed.
 
 Theorem MIS_nil_iff_0 : MaximalIndSet nil <-> V = 0.
 Proof.
-  split.
+  rewrite -> MaximalIndSet_eq. split.
   (* -> *)
   intros H0.
   assert ( {V <= 0} + {0 < V} ) as H1. apply le_lt_dec.
@@ -578,7 +593,7 @@ Qed.
 Theorem IndSet_lift_spec : forall (l : list nat) (x : nat),
   MaximalIndSet l -> x < V -> IndSet (x::l) -> In x l.
 Proof.
-  intros. destruct H as [[H2 H3] H4].
+  intros. rewrite -> MaximalIndSet_eq in H. destruct H as [[H2 H3] H4].
   assert ( {In x l}+{~In x l} ) as H5 by (apply in_dec; apply (eq_nat_dec)).
   destruct H5 as [H5 | H5]. assumption.
   apply False_rec. apply H4 in H5. contradiction.
@@ -626,7 +641,7 @@ Qed.
     
 Theorem MaximalIndSet_order : forall ( X Y : list nat), MaximalIndSet (X ++ Y) -> MaximalIndSet (Y ++ X).
 Proof. 
-  intros X Y H0. inversion H0. constructor. apply IndSet_order. auto.
+  intros X Y H0. rewrite -> MaximalIndSet_eq in *. inversion H0. constructor. apply IndSet_order. auto.
   intros x H2 H3. assert (~ In x (X++Y)) as H4.
   intros H4. apply H2. apply in_app_or in H4.
   apply in_or_app. destruct H4 as [H4 | H4]; auto.
@@ -676,7 +691,7 @@ Qed.
 
 Theorem MaximalIndSet_subs : forall X Y : list nat, incl X Y -> MaximalIndSet X -> MaximalIndSet Y -> list_eq X Y.
 Proof.
-  intros X Y H0 H1 H2.
+  intros X Y H0 H1 H2. rewrite -> MaximalIndSet_eq in *.
   unfold incl in H0. unfold list_eq. intros x. split; intros H3.
   (* -> *)
   apply H0 in H3. apply H3.
@@ -753,7 +768,7 @@ Proof.
           apply (H18 y z). apply (delta_min_in _ _ _ H4).
           apply H1'. apply H14. auto. 
         (* Right *)
-      assert (z <> y) as H16. intros H1'. rewrite H1' in H14. apply NoSelfEdges in H14. apply H14. omega. SearchAbout delta_min.
+      assert (z <> y) as H16. intros H1'. rewrite H1' in H14. apply NoSelfEdges in H14. apply H14. omega.
       assert (delta_min (MkMaximalIndSet X) Y = None \/
              (exists p : nat,
                delta_min (MkMaximalIndSet X) Y = Some p /\
@@ -775,7 +790,7 @@ Theorem MkMaximalIndSet_spec3 : forall X Y : list nat,
   IndSet X -> MaximalIndSet Y -> incl X Y ->
     dec_order (MkMaximalIndSet X) Y = lt_list \/ dec_order (MkMaximalIndSet X) Y = eq_list.
 Proof.
-  intros X Y H0 H1 H2.
+  intros X Y H0 H1 H2. rewrite -> MaximalIndSet_eq in H1.
   assert ( {dec_order (MkMaximalIndSet X) Y = lt_list} +
            {dec_order (MkMaximalIndSet X) Y = eq_list} +
            {dec_order (MkMaximalIndSet X) Y = gt_list}) as H5.
@@ -807,8 +822,8 @@ Proof.
     assert (forall a : nat, In a (MkMaximalIndSet X) -> In a Y) as H13.
       apply delta_min_subs. apply H7.
     assert (~ IndSet(x::(MkMaximalIndSet X))) as H14.
-       destruct H12 as [H12 H14].
-      apply H14. apply H10.
+       destruct H12 as [H12 H14]. intros H15.
+      apply H14 in H15. contradiction.
     assert ({ValidSet (x::(MkMaximalIndSet X))} + {~ ValidSet (x::(MkMaximalIndSet X))}) as H15.
       apply ValidSet_dec. 
     assert ( {independent (x :: MkMaximalIndSet X) = true} + {independent (x :: MkMaximalIndSet X) = false} ) as H16.
@@ -843,7 +858,7 @@ Proof.
       destruct lt_dec; try (apply l); try inversion H6.
     assert (x < y) as H1'.
     apply (MkMaximalIndSet_spec3_help X Y).
-      apply H0. apply H1. apply H2. 
+      apply H0. rewrite -> MaximalIndSet_eq. apply H1. apply H2. 
       destruct H12 as [H0'' H1'']. apply H7. apply H8.
     omega.
 Qed.
@@ -896,7 +911,7 @@ Qed.
 
 Theorem eq_preserves_MIS : forall X Y: list nat, list_eq X Y -> MaximalIndSet X -> MaximalIndSet Y.
 Proof.
-  intros X Y H0 H1.
+  intros X Y H0 H1. rewrite -> MaximalIndSet_eq in *.
   unfold list_eq in H0. inversion H1. constructor. constructor.
   intros z H3. apply H1. apply H0. auto. intros a b H3 H4.  apply H1.
   apply H0. auto. apply H0. auto. intros x H3 H4.
