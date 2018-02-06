@@ -60,7 +60,7 @@ Module FinType.
     
     Definition class : class_of cT :=
       match cT as cT' return class_of cT' with
-        | Pack _ c _ => c
+        | @Pack _ c _ => c
       end.
 
     Definition clone (c : class_of T) (ph : phant_id class c) := @Pack T c T.

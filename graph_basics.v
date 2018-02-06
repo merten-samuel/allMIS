@@ -97,7 +97,7 @@ Construction of induction via induced subgraphs of an lGraph.
      - returns none if the element cannot be indexed (element > new index) 
 *)
 Definition oLift_Ix {x : nat} (a : Ix x) (y : nat) : option (Ix y) :=
-  match a with Index.mk a' _ =>
+  match a with @Index.mk _ a' _ =>
     match lt_dec a' y with
     | left H => Some (@Index.mk y a' H)  
     | right H => None
@@ -441,7 +441,7 @@ Fixpoint flatten_EdgeList {x : nat} (L : list ((Ix x)*(Ix x))): list (nat*nat) :
   | l::L' =>
     match l with (l1, l2) =>
       match l1, l2 with
-        Index.mk l1' _, Index.mk l2' _ => (l1', l2')::flatten_EdgeList L'
+        @Index.mk _ l1' _, @Index.mk _ l2' _ => (l1', l2')::flatten_EdgeList L'
       end
     end
   end.

@@ -25,7 +25,7 @@ Module EqType.
     
     Definition class : class_of cT :=
       match cT as cT' return class_of cT' with
-        | Pack _ c _ => c
+        | @Pack _ c _ => c
       end.
 
     Definition clone (c : class_of T) (ph : phant_id class c) := @Pack T c T.
@@ -46,7 +46,7 @@ Module EqType.
     Notation "[ 'eqType' 'of' T ]" := (@clone T _ _ id)
       (at level 0, format "[ 'eqType'  'of'  T ]").
 
-    Notation "x == y" := (eq _ x y) (at level 70, arguments at next level).
+    Notation "x == y" := (@eq _ x y) (at level 70).
 
     Arguments EqType.eq [cT] _ _.
 

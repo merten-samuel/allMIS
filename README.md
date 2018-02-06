@@ -1,17 +1,18 @@
 # allMIS
 A Coq development for the formalization of graphs and Tsukiyama et al.'s algorithm for finding all maximal independent sets of a graph.
 
-##Build instructions
+## Build instructions
 --------------------
 To build the project simply point make at the included makefile.
 
-##Known problems
+## Known problems
 --------------------
 Attempting to compile some of these files in Windows through the CoqIDE can cause the IDE to freeze. However, compilation works problem-free on multiple Linux distributions and OSX.
 
-The project was developed using Coq 8.4pl6 and compatibility is not guaranteed with other versions.
+The project is compatible with Coq 8.7.1.
 
-##File Descriptions
+
+## File Descriptions
 --------------------
 * **eqtype**, **fintype**, **index** - An implementation of 'indexed' natural numbers (IX n), the type of natural numbers less than some 'index' n. 
 * **lex_order** - An implementation of a lexicographic ordering over sets of natural numbers. 
