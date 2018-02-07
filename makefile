@@ -43,7 +43,7 @@ CAMLFLAGS         := $(COQMF_CAMLFLAGS)
 HASNATDYNLINK     := $(COQMF_HASNATDYNLINK)
 
 CoqMakefile.conf: 
-	coq_makefile all_MIS_complete.v all_MIS_sound.v all_MIS_unique.v all_MIS.v eqtype.v fintype.v graph_basics.v graphs_nondep.v index.v lex_order.v MIS_basics.v test_cases.v wf_combinators.v
+	coq_makefile all_MIS_complete.v all_MIS_Refine.v all_MIS_sound.v all_MIS_unique.v all_MIS.v eqtype.v fintype.v graph_basics.v graphs_nondep.v index.v lex_order.v MIS_basics.v test_cases.v wf_combinators.v
 
 # This file can be created by the user to hook into double colon rules or
 # add any other Makefile code he may need
