@@ -3,6 +3,8 @@ Require Import Wellfounded.
 Require Import Relations.
 Require Import Omega.
 Require Import Coq.Program.Wf.
+Require Import FunInd.
+Require Import Permutation.
 
 (*
     This file contains a number of combinators  for well-founded relations.
@@ -532,6 +534,7 @@ Section AccQueue.
                 | inl _ => p
                 | inr (exist _ x pf) => IterQueueWithAccum x pf
                 end)).
+
 End AccQueue.
 
 Section QueueStackSimulation.
@@ -575,17 +578,204 @@ Section QueueStackSimulation.
 
   (* Some property of the accumlated value *)
   Variable P : B -> Prop.
+
+  Lemma QP_nil : 
+    forall b, QueueProg (nil, b) = (nil, b).
+  Proof.
+    intros. unfold QueueProg.
+    unfold IterQueueWithAccum.
+    rewrite Init.Wf.Fix_eq; auto.
+    intros. destruct mkSmallerQueue; auto. destruct s. apply H.
+  Qed.
+
+  Lemma QP_cons :
+    forall p l b, QueueProg ((p::l), b) = QueueProg ((l ++ (f p)), Accum p b).
+  Proof.
+    intros. unfold QueueProg, IterQueueWithAccum.
+    rewrite Init.Wf.Fix_eq; simpl. auto.
+    intros. destruct mkSmallerQueue; auto. destruct s. apply H.
+  Qed.
+
+  Lemma SP_nil : 
+    forall b, StackProg (nil, b) = (nil, b).
+  Proof.
+    intros. unfold StackProg.
+    unfold IterStackWithAccum.
+    rewrite Init.Wf.Fix_eq; auto.
+    intros. destruct mkSmallerStack; auto. destruct s. apply H.
+  Qed.
+
+  Lemma SP_cons :
+    forall p l b, StackProg ((p::l), b) = StackProg (((f p) ++ (l)), Accum p b).
+  Proof.
+    intros. unfold StackProg, IterStackWithAccum.
+    rewrite Init.Wf.Fix_eq; simpl. auto.
+    intros. destruct mkSmallerStack; auto. destruct s. apply H.
+  Qed.
+
+
+Notation indStackR := (iterStackRel_wf A R R_wf).
+Notation indQueueR := (queueR_wf A R Eqa R_wf R_trans Eqa_eq R_total R_irref).
+
+ Lemma StackApp : 
+    forall l1 l2 b, StackProg ((l1 ++ l2), b) =
+                  StackProg ((l2, (snd (StackProg (l1, b))))).
+  Proof.
+    induction l1 using (well_founded_induction indStackR).
+    induction l1.
+    + intros. rewrite app_nil_l. simpl; auto.
+    + intros. simpl; do 2 rewrite SP_cons.
+      specialize (H (f a ++ l1)).
+      assert (iterStackRel A R (f a ++ l1) (a :: l1)).
+      constructor. apply f_desc. eapply H in H0.
+      rewrite <- H0. rewrite app_assoc. auto.
+  Qed.
+
+  Variable Peq : B -> B -> Prop.
+  Variable Peq_eq : equivalence _ Peq.
+
+  Variable Accum_comm :
+    forall a1 a2 b, Peq (Accum a1 (Accum a2 b)) (Accum a2 (Accum a1 b)).
+
+  Variable Accum_resp :
+    forall a b1 b2, Peq b1 b2 -> Peq (Accum a b1) (Accum a b2).
+
+  Lemma Stack_resp :
+    forall l b1 b2, Peq b1 b2 -> Peq (snd (StackProg (l, b1))) (snd (StackProg (l, b2))).
+  Proof.
+    induction l using (well_founded_induction indStackR). case_eq l.
+    + intros. auto.
+    + intros. do 2 rewrite SP_cons. apply H. subst.
+      constructor. auto. apply Accum_resp. auto.
+  Qed. 
+
+  Lemma Accum_SP_comm :
+    forall l a b, Peq (Accum a (snd (StackProg (l, b))))
+                      (snd (StackProg (l, (Accum a b)))).
+  Proof.
+    induction l using (well_founded_induction indStackR).
+    case_eq l.
+    + intros. subst. simpl; auto. apply Peq_eq.
+    + intros. subst. do 2 rewrite SP_cons.
+      assert (iterStackRel A R (f a ++ l0) (a :: l0)).
+      { constructor. auto. }
+      specialize (H (f a ++ l0) H0 a0 (Accum a b)).
+      inversion Peq_eq. eapply equiv_trans.
+      apply H. apply Stack_resp.
+      apply Accum_comm.
+  Qed.
     
-  (* The property P doesn't care what order the
-      terms were evaluated in (e.g. In/Cons, =/+). *)
-  Variable P_acc_transpose :
-    forall a1 a2 b, P (Accum a1 (Accum a2 b)) -> P (Accum a2 (Accum a1 b)). 
+  Lemma Stack_App_eq :
+    forall l1 l2 b, Peq (snd (StackProg (l2 ++ l1, b)))
+                        (snd (StackProg (l1 ++ l2, b))).
+  Proof.
+    intros. do 2 rewrite StackApp.
+    generalize dependent b. generalize dependent l2.
+    induction l1 using (well_founded_induction indStackR).
+    case_eq l1.
+    - intros. subst. rewrite SP_nil; simpl. apply Peq_eq.
+    - intros. subst. do 2 rewrite SP_cons.
+      assert (iterStackRel A R (f a ++ l) (a :: l)).
+      { constructor. auto. }
+      specialize (H (f a ++ l) H0).
+      assert (Peq (Accum a (snd (StackProg (l2, b))))
+                 (snd (StackProg (l2, (Accum a b))))).
+      apply Accum_SP_comm.
+      inversion Peq_eq. eapply equiv_trans.
+      eapply Stack_resp. apply H1.
+      apply H.
+  Qed.
+
+  Lemma Stack_comm : 
+    forall x y l b, Peq (snd (StackProg (x::y::l, b)))
+                        (snd (StackProg (y::x::l, b))).
+  Proof.
+    intros x y l.
+    replace (y::x::l) with (((y::nil)++(x::nil)) ++ l); [|simpl; auto].
+    replace (x::y::l) with (((x::nil)++(y::nil)) ++ l); [|simpl; auto].
+    intros.
+    rewrite (StackApp ((x :: nil) ++ y :: nil) l b).
+    rewrite (StackApp ((y :: nil) ++ x :: nil) l b).
+    apply Stack_resp. apply Stack_App_eq.
+  Qed.
+
+  Lemma StackPerm :
+    forall l1 l2, Permutation l1 l2 ->
+      forall b, Peq (snd (StackProg (l1, b))) (snd (StackProg (l2, b))).
+  Proof.
+    intros l1 l2 H.
+    induction H.
+    + intros. apply Peq_eq.
+    + intros. do 2 rewrite SP_cons. do 2 rewrite StackApp.
+      apply IHPermutation.
+    + intros. apply Stack_comm.
+    + intros. destruct Peq_eq. eapply equiv_trans.
+      apply IHPermutation1. apply IHPermutation2.
+  Qed.
+
+  Inductive QueueStepR : (list A * B) -> (list A * B) -> Prop :=
+  | QStep : forall p1 p2 a l b,
+              p1 = (a::l, b) ->
+              p2 = (l ++ f a, Accum a b) -> QueueStepR p1 p2.
+
+  Inductive StackStepR : (list A * B) -> (list A * B) -> Prop :=
+  | SStep : forall p1 p2 a l b,
+              p1 = (a::l, b) ->
+              p2 = (f a ++ l, Accum a b) -> StackStepR p1 p2.
+
+
+  Definition QueueBigStepR := clos_refl_trans  _ QueueStepR.
+  Definition StackBigStepR := clos_refl_trans  _ StackStepR.
+
+  Lemma QueueStepR_eq : forall p1 p2,
+    QueueStepR p1 p2 -> QueueProg p1 = QueueProg p2.
+  Proof.
+    intros. inversion H; subst. rewrite QP_cons. auto.
+  Qed.
+
+  Lemma StackStepR_eq : forall p1 p2, 
+    StackStepR p1 p2 -> StackProg p1 = StackProg p2.
+  Proof.
+    intros. inversion H; subst. rewrite SP_cons. auto.
+  Qed.
+
+  Lemma QueueBigStepR_end : forall p, QueueBigStepR p (QueueProg p).
+  Proof.
+    intros. destruct p. generalize b.
+    induction l using (well_founded_induction indQueueR).
+    intros. case_eq l.
+    + intros. rewrite QP_nil. apply rt_refl.
+    + intros. subst. rewrite QP_cons.
+      eapply rt_trans. Focus 2.
+      apply H. constructor. apply f_desc.
+      apply rt_step. eapply QStep; eauto.
+  Qed.
+
+  Lemma StackBigStepR_end : forall p, StackBigStepR p (StackProg p).
+  Proof.
+    intros. destruct p. generalize b.
+    induction l using (well_founded_induction indStackR).
+    intros. case_eq l.
+    + intros. apply rt_refl.
+    + intros. subst. rewrite SP_cons.
+      eapply rt_trans. Focus 2.
+      apply H. constructor. apply f_desc.
+      apply rt_step. eapply SStep; eauto.
+  Qed.
 
   Lemma Simulation :
-    forall input, P (snd (QueueProg input)) -> P (snd (StackProg input)).
+    forall l b, Peq (snd (StackProg (l, b))) (snd (QueueProg (l, b))).
   Proof.
+    induction l using (well_founded_induction indQueueR).
+    case_eq l.
+    + intros. rewrite SP_nil, QP_nil. apply Peq_eq.
+    + intros. subst. rewrite SP_cons, QP_cons.
+      destruct Peq_eq. eapply equiv_trans.
+      apply StackPerm with (l2 := l0 ++ f a).
+      apply Permutation_app_comm.
+      apply H. constructor. auto. 
+  Qed.
 
-  Admitted.
 End QueueStackSimulation.
 
 Section TestAccStack.
