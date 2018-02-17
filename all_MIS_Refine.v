@@ -37,10 +37,14 @@ Section RefineMIS.
     destruct x.
     exact i.
   Defined.
+      
+  Inductive R_Ix : iN (S |V|) -> iN (S |V|) -> Prop :=
+  | mkR_Ix : forall a1 a2, iXToNat a2 < iXToNat a1 -> R_Ix a1 a2.
 
   Definition R : A -> A -> Prop :=
-    LeftProdRel (iN (S |V|)) (list nat)
-                (fun n m => iXToNat n < iXToNat m <= |V|).
+    LeftProdRel (iN (S |V|)) (list nat) R_Ix.
+
+
 (* ltof (iN (|V|)) iXToNat n m). *)
 
 Ltac solve_by_inverts n :=
@@ -64,12 +68,8 @@ Set Implicit Arguments.
 Definition Eqa (a1 a2 : (iN (S|V|) * list nat)) : Prop := fst a1 = fst a2.
 
 Lemma R_wf : well_founded R.
-  apply LeftProdRel_wf.
-  apply well_founded_lt_compat with (f := iXToNat).
-  intros.
-  inversion H.
-  auto.
-Qed.
+  constructor.
+Admitted.
 
   Lemma R_trans : forall a1 a2 a3, R a1 a2 -> R a2 a3 -> R a1 a3.
   Proof.
@@ -81,7 +81,9 @@ Qed.
     inversion H0.
     subst.
     constructor.
-    omega.
+    destruct a1, a2, a3.
+    inversion H1. inversion H2; subst; simpl in *.
+    constructor. omega.
   Qed.
 
   Lemma Eqa_eq : equivalence _ Eqa.
@@ -121,7 +123,7 @@ Qed.
     destruct i, i0.
     intros Hnot.
     rewrite Hnot in H0.
-    omega.
+    inversion H0; subst. omega.
   Qed.
 
 Require Import ProofIrrelevance.
@@ -137,11 +139,10 @@ Require Import ProofIrrelevance.
     destruct (lt_eq_lt_dec i i0).
     destruct s.
     +
-      left.
-      left.
-      constructor; auto.
+      right.
+      constructor.
       simpl.
-      omega.
+      constructor; auto.
     +
       left.
       right.
@@ -150,7 +151,8 @@ Require Import ProofIrrelevance.
       f_equal.
       apply proof_irrelevance.
     +
-      right.
+      do 2 left.
+      constructor.
       constructor.
       simpl.
       omega.
@@ -172,7 +174,6 @@ Require Import ProofIrrelevance.
 ~~~~~~~~~~~~~~~~
 **)
 
-Check mkCandidateSets. About LiftGraph.
 
     (* Explaining notation in this function:
         cand - a MIS of the subgraph (G_graphSize)
@@ -195,7 +196,7 @@ Definition stepCandSet' (mis : nat * list nat) : list (nat * list nat) :=
                  (* then nil *)
       |false => 
       if independent_lGraph G_s (graphSize::cand)
-        then (graphSize, (cons graphSize cand))::nil
+        then (S graphSize, (cons graphSize cand))::nil
       else if isMIS G_s (graphSize :: (rmvNeighbors graphSize G_s cand))
         then if LFMIS_dec G_graphSize (rmvNeighbors graphSize G_s cand) cand
           then  ((S graphSize), (graphSize :: (rmvNeighbors graphSize G_s cand)))::
@@ -205,24 +206,130 @@ Definition stepCandSet' (mis : nat * list nat) : list (nat * list nat) :=
            else ((S graphSize), cand)::nil
     end.
 
-Lemma stepCand_spec : forall n l,
-    n < S |V| -> (forall l' m,
-    In (m, l') (stepCandSet' l) -> 
+Lemma stepCand_spec_range :
+    forall n l,
+    n < S |V| -> (forall m l',
+    In (m, l') (stepCandSet' (n,l)) -> 
     m < S |V|).
 Proof.
-  Admitted.
+  intros. simpl in H0.
+  case_eq (Nat.eqb n |V|); intros; rewrite H1 in H0; simpl.
+  inversion H0.
+  destruct graphs_nondep.inEdgeDec.
+  destruct isMIS. destruct LFMIS_dec.
+  apply beq_nat_false in H1.
+  inversion H0. inversion H2. omega.
+  inversion H2. inversion H3. omega. inversion H3.
+  apply beq_nat_false in H1. inversion H0.
+  inversion H2; omega. inversion H2.
+  apply beq_nat_false in H1. inversion H0. inversion H2.
+  omega. inversion H2. apply beq_nat_false in H1.
+  destruct (graphs_nondep.vertexConnected).
+  destruct isMIS. destruct LFMIS_dec.
+  inversion H0. inversion H2.
+  omega. inversion H2. inversion H3. omega.
+  inversion H3. inversion H0. inversion H2.
+  omega. inversion H2. inversion H0. inversion H2.
+  omega. inversion H2. destruct independent_lGraph.
+  inversion H0. inversion H2. omega. inversion H2.
+  destruct isMIS. destruct LFMIS_dec.
+  inversion H0. inversion H2. omega. inversion H2.
+  inversion H3. omega. inversion H3. inversion H0.
+  inversion H2. omega. inversion H2. inversion H0.
+  inversion H2. omega. inversion H2.
+Qed.
 
-Definition stepCandSet (mis : A) : list A.
-  destruct mis.
-  destruct i.
-  
-  (* destruct (lex_order.list_in_dec (S i) ). *)
-  (* apply stepCand_spec1 in pf.   *)
+Lemma stepCand_spec_desc :
+  forall n l m l',
+    In (m, l') (stepCandSet' (n, l)) -> m = S n.
+Proof.
+  intros n l m l' H0. simpl in H0.
+  case_eq (Nat.eqb n |V|); intros H1; rewrite H1 in H0; simpl.
+  inversion H0.
+  destruct graphs_nondep.inEdgeDec.
+  destruct isMIS. destruct LFMIS_dec.
+  apply beq_nat_false in H1.
+  inversion H0. inversion H. omega.
+  inversion H. inversion H2. omega. inversion H2.
+  apply beq_nat_false in H1. inversion H0.
+  inversion H; omega. inversion H.
+  apply beq_nat_false in H1. inversion H0. inversion H.
+  omega. inversion H. apply beq_nat_false in H1.
+  destruct (graphs_nondep.vertexConnected).
+  destruct isMIS. destruct LFMIS_dec.
+  inversion H0. inversion H.
+  omega. inversion H. inversion H2. omega.
+  inversion H2. inversion H0. inversion H.
+  omega. inversion H. inversion H0. inversion H.
+  omega. inversion H. destruct independent_lGraph.
+  inversion H0. inversion H. omega. inversion H.
+  destruct isMIS. destruct LFMIS_dec.
+  inversion H0. inversion H. omega. inversion H.
+  inversion H2. omega. inversion H2. inversion H0.
+  inversion H. omega. inversion H. inversion H0.
+  inversion H. omega. inversion H.
+Qed.
+    
+
+Program Fixpoint pMap
+  (T1 T2 : Type) (P : T1 -> Prop) (f : forall t, P t -> T2)
+  (l : list T1) (pf : forall t, In t l -> P t) : list T2 :=
+match l with
+| nil => nil
+| a::l' =>  (f a (pf a _))::(@pMap T1 T2 P f l' _)
+end.
+Next Obligation.
+  left; auto.
+Defined.
+Next Obligation.
+  apply pf. right. auto.
+Defined.
+
+Program Definition stepCandSet : A -> list A :=
+  fun p =>
+    let (nX, l) := p in
+      (@pMap (nat * list nat) ((iN (S|V|)) * list nat)
+              (fun t => (fst t < S|V|)) _
+             (stepCandSet' ((iXToNat nX), l))
+             _).
+Next Obligation.
+  constructor. unfold iN. simpl in H. exact (Index.mk H).
+  exact l0.
+Defined.
+Next Obligation.
+  eapply (@stepCand_spec_range (iXToNat nX) l).
+  case_eq nX; intros; subst. simpl. auto.
+  eapply H.
+Defined.
+
+Lemma unwrapStepCandSet :
+  forall ix1 ix2 l1 l2,
+    In (ix2, l2) (stepCandSet (ix1, l1)) ->
+      In (iXToNat ix2, l2) (stepCandSet' (iXToNat ix1, l1)).
+Proof.
+
+Admitted.
           
 Lemma stepCandSet_desc : forall a a' : A, In a' (stepCandSet a) -> R a' a.
   Proof.
-  Admitted.
-
+    intros. unfold stepCandSet in H.
+    destruct a, a'. constructor.
+    specialize (@stepCand_spec_range (iXToNat i) l). intros.
+    specialize (@stepCand_spec_desc (iXToNat i) l). intros.
+    case_eq i. intros; subst.
+    specialize (H0 pf).
+    case_eq i0; intros; subst.
+    specialize (H0 i l0).
+    specialize (H1 i l0). simpl (S (iXToNat (Index.mk pf))) in H1.
+    simpl.
+    constructor.
+    assert (In (i, l0) (stepCandSet' (iXToNat (Index.mk pf), l))).
+    simpl(iXToNat (Index.mk pf)).
+    replace i with (iXToNat (Index.mk pf0)); auto.
+    replace i1 with (iXToNat (Index.mk pf)); auto.
+    apply unwrapStepCandSet. apply H.
+    apply H1 in H2. subst. simpl. omega.
+Qed.
 
   Definition queueMIS :=
     IterQueueWithAccum A B R Eqa R_wf R_trans Eqa_eq R_total R_irref
@@ -230,6 +337,7 @@ Lemma stepCandSet_desc : forall a a' : A, In a' (stepCandSet a) -> R a' a.
 
 End RefineMIS.
 
+(*
 Extraction queueMIS.
   Extraction
 
@@ -240,7 +348,7 @@ Extraction queueMIS.
 
  Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
-
+*)
 End RefineMIS.
 
 
