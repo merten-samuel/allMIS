@@ -12,6 +12,7 @@ Definition iN (N : nat) :=  Ix N.
 Require Import Coq.extraction.ExtrHaskellString.
 Extraction Language Haskell.
 Extract Inductive sumbool => "Prelude.Bool" ["Prelude.True" "Prelude.False"].
+
 Section RefineMIS.
   (** Let's set up the environment we need to apply queueMIS **)
 
@@ -68,8 +69,16 @@ Set Implicit Arguments.
 Definition Eqa (a1 a2 : (iN (S|V|) * list nat)) : Prop := fst a1 = fst a2.
 
 Lemma R_wf : well_founded R.
-  constructor.
-Admitted.
+Proof.
+  unfold R.
+  constructor. destruct a, i.
+  generalize dependent l.
+  induction i using (well_founded_induction (Nat.gt_wf (S |V|))).
+  intros. destruct y. constructor. intros. destruct y. destruct i0.
+  eapply H. Focus 2. apply H1. constructor. Focus 2. omega.
+  inversion H0; subst. inversion H2; subst. simpl in H3, H1.
+  omega.
+Qed.
 
   Lemma R_trans : forall a1 a2 a3, R a1 a2 -> R a2 a3 -> R a1 a3.
   Proof.
@@ -349,7 +358,6 @@ Extraction queueMIS.
  Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
 *)
-End RefineMIS.
 
 
 
