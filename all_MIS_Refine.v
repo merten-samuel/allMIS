@@ -344,6 +344,38 @@ Qed.
     IterQueueWithAccum A B R Eqa R_wf R_trans Eqa_eq R_total R_irref
       Accum stepCandSet stepCandSet_desc. 
 
+  Definition Ox : iN (S|V|).
+    unfold iN. unfold Ix. eapply (@Index.mk _ 0 _).
+    Unshelve. omega.
+  Defined.
+
+  Definition queueStep := QueueStepR _ _ Accum stepCandSet.
+
+  Inductive queueStep_n :
+    nat -> list A * B -> list A * B -> Prop :=
+  | QMS_step : forall l1 l2, queueStep l1 l2 -> queueStep_n 1 l1 l2
+  | QMS_trans : forall n l1 l2 l3,
+                  queueStep_n n l1 l2 ->
+                  queueStep l2 l3 -> queueStep_n (S n) l1 l3.
+
+  Lemma stepEq :
+    forall p1 p2, queueStep p1 p2 -> queueMIS p1 = queueMIS p2.
+  Proof.
+
+  Admitted.
+
+  Lemma stepNEq :
+    forall n p1 p2, queueStep_n n p1 p2 -> queueMIS p1 = queueMIS p2.
+  Proof.
+
+  Admitted.
+
+
+  Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((Ox, nil)::nil, nil)) = PrintMIS G.
+  Proof.
+    (* it's gonna be a wild ride in here *)
+  Admitted.
+
 End RefineMIS.
 
 (*
@@ -358,6 +390,5 @@ Extraction queueMIS.
  Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
 *)
-
 
 
