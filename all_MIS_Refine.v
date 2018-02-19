@@ -195,8 +195,6 @@ Section RefineMIS.
   (* function over nats that will be refined to use index type
    was having trouble with dependent case analysis when using 
    Index type. *)
-<<<<<<< HEAD
-
 
 Definition packNat (n : nat) (pf : n < S|V|) : iN (S|V|) := @Index.mk _ n pf.
 
@@ -255,374 +253,6 @@ Proof.
   apply beq_nat_false in eq_pf. omega.
 Defined.
 
-(*
-Definition stepCandSet' (mis : nat * list nat) : list (nat * list nat) :=
-=======
-  Definition stepCandSet' (mis : nat * list nat) :
-   list (nat * list nat) :=
->>>>>>> d68d13bb73cbf2e3598da3265a3410d516ab0a65
-    let (graphSize, cand) := mis in
-    let G_graphSize := LiftGraph graphSize G in    
-    let G_s := (LiftGraph (S graphSize) G) in
-    match (Nat.eqb graphSize |V|) with
-    (* if (Nat.eqb graphSizeN |V|) *) (* Is this an MIS of the whole graph G? Then drop it*)
-    |true => nil 
-    (* then nil *)
-    |false => 
-     if independent_lGraph G_s (graphSize::cand)
-     then (S graphSize, (cons graphSize cand))::nil
-     else if isMIS G_s (graphSize :: (rmvNeighbors graphSize G_s cand))
-          then if LFMIS_dec G_graphSize (rmvNeighbors graphSize G_s cand) cand
-               then  ((S graphSize),
-               (graphSize :: (rmvNeighbors graphSize G_s cand)))::
-                                         ((S graphSize), cand)::nil
-               else ((S graphSize), cand)::nil
-          else ((S graphSize), cand)::nil
-    end.
-
-  Lemma stepCand_spec_range :
-    forall n l,
-<<<<<<< HEAD
-    n < S |V| -> (forall m l',
-    In (m, l') (stepCandSet' (n,l)) -> 
-    m < S |V|).
-Proof.
-  intros. simpl in H0.
-  case_eq (Nat.eqb n |V|); intros; rewrite H1 in H0; simpl.
-  inversion H0.
-  destruct graphs_nondep.inEdgeDec.
-  destruct isMIS. destruct LFMIS_dec.
-  apply beq_nat_false in H1.
-  inversion H0. inversion H2. omega.
-  inversion H2. inversion H3. omega. inversion H3.
-  apply beq_nat_false in H1. inversion H0.
-  inversion H2; omega. inversion H2.
-  apply beq_nat_false in H1. inversion H0. inversion H2.
-  omega. inversion H2. apply beq_nat_false in H1.
-  destruct (graphs_nondep.vertexConnected).
-  destruct isMIS. destruct LFMIS_dec.
-  inversion H0. inversion H2.
-  omega. inversion H2. inversion H3. omega.
-  inversion H3. inversion H0. inversion H2.
-  omega. inversion H2. inversion H0. inversion H2.
-  omega. inversion H2. destruct independent_lGraph.
-  inversion H0. inversion H2. omega. inversion H2.
-  destruct isMIS. destruct LFMIS_dec.
-  inversion H0. inversion H2. omega. inversion H2.
-  inversion H3. omega. inversion H3. inversion H0.
-  inversion H2. omega. inversion H2. inversion H0.
-  inversion H2. omega. inversion H2.
-Qed.
-
-Lemma stepCand_spec_range' :
-    forall p,
-    (fst p) < S |V| -> (forall m l',
-    In (m, l') (stepCandSet' p) -> 
-    m < S |V|).
-Proof. intros p. destruct p. apply stepCand_spec_range. Qed.
-
-Lemma stepCand_spec_desc :
-  forall n l m l',
-    In (m, l') (stepCandSet' (n, l)) -> m = S n.
-Proof.
-  intros n l m l' H0. simpl in H0.
-  case_eq (Nat.eqb n |V|); intros H1; rewrite H1 in H0; simpl.
-  inversion H0.
-  destruct graphs_nondep.inEdgeDec.
-  destruct isMIS. destruct LFMIS_dec.
-  apply beq_nat_false in H1.
-  inversion H0. inversion H. omega.
-  inversion H. inversion H2. omega. inversion H2.
-  apply beq_nat_false in H1. inversion H0.
-  inversion H; omega. inversion H.
-  apply beq_nat_false in H1. inversion H0. inversion H.
-  omega. inversion H. apply beq_nat_false in H1.
-  destruct (graphs_nondep.vertexConnected).
-  destruct isMIS. destruct LFMIS_dec.
-  inversion H0. inversion H.
-  omega. inversion H. inversion H2. omega.
-  inversion H2. inversion H0. inversion H.
-  omega. inversion H. inversion H0. inversion H.
-  omega. inversion H. destruct independent_lGraph.
-  inversion H0. inversion H. omega. inversion H.
-  destruct isMIS. destruct LFMIS_dec.
-  inversion H0. inversion H. omega. inversion H.
-  inversion H2. omega. inversion H2. inversion H0.
-  inversion H. omega. inversion H. inversion H0.
-  inversion H. omega. inversion H.
-Qed.
-    
-
-Lemma P_tl :
-  forall (A : Type)
-         (a : A) (l1 l2 : list A)
-         (P : A -> Prop),
-  a::l1 = l2 -> (forall a', In a' l2 -> P a') ->
-  (forall a', In a' l1 -> P a').
-Proof. intros. apply H0. subst. right; auto. Defined.
-
-SearchAbout In cons.
-
-Lemma P_hd :
-  forall (A : Type)
-         (a : A) (l1 l2 : list A),
-  a::l1 = l2 -> In a l2.
-Proof. intros. subst. left. auto. Defined.
-
-Fixpoint pMap
-  (T1 T2 : Type) (P : T1 -> Prop) (f : forall t, P t -> T2)
-  (l : list T1) (pf : forall t, In t l -> P t) : list T2 :=
-match l as k return (k = l -> list T2)with
-| nil => fun _ => nil
-| a::l' => fun eq_pf => (f a (pf a (@P_hd _ a l' l eq_pf)))::
-                        (@pMap T1 T2 P f l' (@P_tl _ a l' l _ eq_pf pf))
-end (eq_refl l).
-Print A.
-Lemma stripiN : forall (x : iN (S|V|)), iXToNat x < S|V|.
-Proof. intros. destruct x; auto. Qed.
-
-Lemma stripiNList : forall (l : list (iN (S|V|))) a, In a l -> iXToNat a < S|V|.
-Proof. intros. destruct a. simpl. auto. Qed.
-
-Definition liftiN : forall n, n < S|V| -> iN (S|V|).
-Proof. intros. apply (Index.mk H). Qed.
-
-(* 
-(A ->
- forall (nX : iN (S |V|)) (l : list nat) (t : nat * list nat),
- In t (stepCandSet' (iXToNat nX, l)) -> (fun t0 : nat * list nat => fst t0 < S |V|) t).
-*)
-Check (fun (a : A) => stepCand_spec_range).
-Program Definition stepCandSet : A -> list A :=
-  fun p =>
-    let (nX, l) := p in
-      (@pMap (nat * list nat) ((iN (S|V|)) * list nat)
-              (fun t => (fst t < S|V|))
-              (fun p pf => (@liftiN (fst p) pf, snd p))
-              (stepCandSet' ((iXToNat nX), l))
-              _).
-Next Obligation.
-  eapply (@stepCand_spec_range' (iXToNat nX) l).
-  case_eq nX; intros; subst. simpl. auto.
-  eapply H.
-Defined.
-
-Lemma unwrapStepCandSet :
-  forall ix1 ix2 l1 l2,
-    In (ix2, l2) (stepCandSet (ix1, l1)) ->
-=======
-      n < S |V| -> (forall m l',
-                       In (m, l') (stepCandSet' (n,l)) -> 
-                       m < S |V|).
-  Proof.
-    intros. simpl in H0.
-    case_eq (Nat.eqb n |V|); intros; rewrite H1 in H0; simpl.
-    inversion H0.
-    destruct graphs_nondep.inEdgeDec.
-    destruct isMIS. destruct LFMIS_dec.
-    apply beq_nat_false in H1.
-    inversion H0. inversion H2. omega.
-    inversion H2. inversion H3. omega. inversion H3.
-    apply beq_nat_false in H1. inversion H0.
-    inversion H2; omega. inversion H2.
-    apply beq_nat_false in H1. inversion H0. inversion H2.
-    omega. inversion H2. apply beq_nat_false in H1.
-    destruct (graphs_nondep.vertexConnected).
-    destruct isMIS. destruct LFMIS_dec.
-    inversion H0. inversion H2.
-    omega. inversion H2. inversion H3. omega.
-    inversion H3. inversion H0. inversion H2.
-    omega. inversion H2. inversion H0. inversion H2.
-    omega. inversion H2. destruct independent_lGraph.
-    inversion H0. inversion H2. omega. inversion H2.
-    destruct isMIS. destruct LFMIS_dec.
-    inversion H0. inversion H2. omega. inversion H2.
-    inversion H3. omega. inversion H3. inversion H0.
-    inversion H2. omega. inversion H2. inversion H0.
-    inversion H2. omega. inversion H2.
-  Qed.
-
-  Lemma stepCand_spec_desc :
-    forall n l m l',
-      In (m, l') (stepCandSet' (n, l)) -> m = S n.
-  Proof.
-    intros n l m l' H0. simpl in H0.
-    case_eq (Nat.eqb n |V|); intros H1; rewrite H1 in H0; simpl.
-    inversion H0.
-    destruct graphs_nondep.inEdgeDec.
-    destruct isMIS. destruct LFMIS_dec.
-    apply beq_nat_false in H1.
-    inversion H0. inversion H. omega.
-    inversion H. inversion H2. omega. inversion H2.
-    apply beq_nat_false in H1. inversion H0.
-    inversion H; omega. inversion H.
-    apply beq_nat_false in H1. inversion H0. inversion H.
-    omega. inversion H. apply beq_nat_false in H1.
-    destruct (graphs_nondep.vertexConnected).
-    destruct isMIS. destruct LFMIS_dec.
-    inversion H0. inversion H.
-    omega. inversion H. inversion H2. omega.
-    inversion H2. inversion H0. inversion H.
-    omega. inversion H. inversion H0. inversion H.
-    omega. inversion H. destruct independent_lGraph.
-    inversion H0. inversion H. omega. inversion H.
-    destruct isMIS. destruct LFMIS_dec.
-    inversion H0. inversion H. omega. inversion H.
-    inversion H2. omega. inversion H2. inversion H0.
-    inversion H. omega. inversion H. inversion H0.
-    inversion H. omega. inversion H.
-  Qed.
-
-  Definition pMap_o_1 := 
-    fun (T1 : Type) (P : T1 -> Prop) (l : list T1)
-        (pf : forall t : T1, In t l -> P t) (a : T1) 
-        (l' : list T1) (Heq_l : a :: l' = l) =>
-      eq_ind (a :: l')
-             (fun l0 : list T1 => (forall t : T1, In t l0 -> P t) -> In a l0)
-             (fun _ : forall t : T1, In t (a :: l') -> P t => or_introl eq_refl) l
-             Heq_l pf.
-
-  
-  Program Fixpoint pMap
-          (T1 T2 : Type) (P : T1 -> Prop) (f : forall t, P t -> T2)
-          (l : list T1) (pf : forall t, In t l -> P t) : list T2 :=
-    match l with
-    | nil => nil
-    | a::l' =>  (f a _)::(@pMap T1 T2 P f l' _)
-    end.
-  Next Obligation.
-    apply pf.
-    left.
-    reflexivity.
-  Defined.
-  Next Obligation.
-    apply pf. right. exact H.
-  Defined.  
-
-  Lemma pMap_spec : forall (T1 T2 : Type) P f l pf,
-      @pMap T1 T2 P f l pf = nil ->
-      l = nil.
-    intros.
-    induction l; auto.
-    simpl.
-    simpl in H.
-    inversion H.
-  Qed.
-
-  Definition pMap_make : forall T1 l P a,
-      (forall t : T1, In t (a :: l) -> P t) ->
-      (forall t : T1, In t l -> P t).
-  Proof.
-    intros.
-    apply X.
-    right.
-    exact H.
-  Defined.
-
-  Definition pMap_extract : forall T1 a l P,
-      (forall t : T1, In t (a::l) -> P t)
-      -> P a.
-  Proof.
-    intros.
-    apply X.
-    left.
-    reflexivity.
-  Defined.
-
-  Lemma pMap_cons : forall (T1 T2 : Type) (P : T1 -> Prop) f a l 
-                           (pf : forall t : T1, In t (a::l) -> P t),
-      @pMap T1 T2 P f (a::l) pf = 
-      f a (pMap_extract P pf) :: (@pMap T1 T2 P f l (pMap_make P pf)).
-  Proof.
-    intros.
-    induction l.
-    auto.
-    auto.
-  Qed.
-
-  Definition step (l : list (nat * list nat))
-             (p : forall t, In t l -> fst t < S|V|) 
-    : list A :=
-    @pMap (nat * list nat) A (fun t => fst t < S|V|)
-          (fun t pf => (Index.mk pf,snd t) ) l
-          p.
-
-  Program Definition stepCandSet (a : A) : list A :=
-    step (stepCandSet' (iXToNat (fst a), snd a)) _.
-  Next Obligation.
-    fold stepCandSet' in H.
-    destruct i.
-    simpl in *.
-    apply (@stepCand_spec_range i l0) 
-      with (l' := l).
-    auto.
-    apply H.
-  Defined.
-
-  Lemma unwrapStepCandSet' :
-    forall ix1 ix2 l1 l2 pf,
-      In (ix2, l2) (step (stepCandSet' (iXToNat ix1, l1)) pf) ->
->>>>>>> d68d13bb73cbf2e3598da3265a3410d516ab0a65
-      In (iXToNat ix2, l2) (stepCandSet' (iXToNat ix1, l1)).
-  Proof.
-    intros.
-    generalize dependent ((stepCandSet' (iXToNat ix1, l1))).
-    intros l.
-    intros pf.
-    induction l.
-    intros.
-    simpl in H.
-    inversion H.
-    intros.
-    unfold step in H.
-    rewrite pMap_cons in H.
-    simpl in H.
-    destruct H.
-    destruct a.
-    simpl.
-    inversion H;
-      subst; auto.
-    unfold pMap_make in H.
-    destruct ix2.
-    simpl. simpl in H.
-    si.
-  Qed.
-  
-  Lemma unwrapStepCandSet :
-    forall ix1 l1 ix2 l2,
-      In (ix2, l2) (stepCandSet (ix1,l1)) ->
-      exists pf,
-        In (ix2, l2) (step (stepCandSet' (iXToNat ix1, l1)) pf).
-  Proof.
-    intros.
-    unfold stepCandSet in H.
-    eauto.
-  Qed.
-
-
-  Lemma stepCandSet_desc : forall a a' : A, In a' (stepCandSet a) -> R a' a.
-  Proof.
-    intros. unfold stepCandSet in H.
-    destruct a, a'. constructor.
-    specialize (@stepCand_spec_range (iXToNat i) l). intros.
-    specialize (@stepCand_spec_desc (iXToNat i) l). intros.
-    case_eq i. intros; subst.
-    specialize (H0 pf).
-    case_eq i0; intros; subst.
-    specialize (H0 i l0).
-    specialize (H1 i l0). simpl (S (iXToNat (Index.mk pf))) in H1.
-    simpl.
-    constructor.
-    assert (In (i, l0) (stepCandSet' (iXToNat (Index.mk pf), l))).
-    simpl(iXToNat (Index.mk pf)).
-    replace i with (iXToNat (Index.mk pf0)); auto.
-    replace i1 with (iXToNat (Index.mk pf)); auto.
-    eapply unwrapStepCandSet'.
-    apply H.
-    apply H1 in H2. subst. simpl. omega.
-<<<<<<< HEAD
-Qed.
-*)
 
 Lemma stepCandSet_desc : forall a a' : A, In a' (stepCandSet a) -> R a' a.
 Proof.
@@ -642,9 +272,6 @@ Proof.
   inversion H0. inversion H.
   inversion H0. omega. inversion H0.
 Qed.
-=======
-  Qed.
->>>>>>> d68d13bb73cbf2e3598da3265a3410d516ab0a65
 
   Definition queueMIS :=
     IterQueueWithAccum A B R Eqa R_wf R_trans Eqa_eq R_total R_irref
@@ -657,14 +284,51 @@ Qed.
 
   Definition queueStep := QueueStepR _ _ Accum stepCandSet.
 
+  (* This form is nice for working with composition,
+      but the form of the transitivity means that
+      you can build a chain of arbitrary length
+      deriving this relation. 
+  *)
   Inductive queueStep_n :
     nat -> list A * B -> list A * B -> Prop :=
-  | QMS_refl : forall l1 l2, queueStep_n 0 l1 l2
+  | QMS_refl : forall l, queueStep_n 0 l l
   | QMS_step : forall l1 l2, queueStep l1 l2 -> queueStep_n 1 l1 l2
   | QMS_trans : forall n m l1 l2 l3,
                   queueStep_n n l1 l2 ->
                   queueStep_n m l2 l3 -> queueStep_n (n + m) l1 l3.
 
+  (*
+      To work around this, we prove the following two lemmas
+      regarding the base cases that can appear in induction
+      on queueStep_n. These 'shortcut' any of the problematic
+      chains mentioned above
+  *)
+  Lemma queueStep_n_0 :
+    forall l1 l2 n, queueStep_n n l1 l2 -> n = 0 -> l1 = l2.
+  Proof.
+    intros l1 l2 n H. induction H.
+    + intros. auto.
+    + intros. inversion H0.
+    + intros. apply plus_is_O in H1.
+      inversion H1. 
+      rewrite IHqueueStep_n1; auto.
+  Qed.
+
+  Lemma queueStep_n_1 :
+    forall l1 l2 n, queueStep_n n l1 l2 -> n = 1 -> queueStep l1 l2.
+  Proof.
+    intros l1 l2 n H. induction H.
+    + intros. inversion H.
+    + intros. auto.
+    + intros. apply Nat.eq_add_1 in H1. 
+      do 2 destruct H1; subst.
+      apply queueStep_n_0 in H0; auto.
+      simpl; subst. apply IHqueueStep_n1. auto.
+      apply queueStep_n_0 in H; auto.
+      simpl; subst. apply IHqueueStep_n2. auto.
+  Qed.
+
+  (* This guy helps clean up some obnoxious cases *)
   Lemma queueStep_n_inv :
     forall p1 p2 n m, queueStep_n (n + m) p1 p2 ->
       exists p_int, queueStep_n n p1 p_int /\ queueStep_n m p_int p2.
@@ -718,6 +382,38 @@ Qed.
 
   Admitted.
 
+  Lemma mkCandidateSets_app :
+    forall l1 l2 G,
+      lV G <> 0 -> mkCandidateSets G (l1 ++ l2) =
+                   (mkCandidateSets G l1) ++ (mkCandidateSets G l2).
+  Proof.
+    induction l1.
+    + intros. rewrite app_nil_l. simpl. destruct (lV G0). omega. auto. 
+    + intros. simpl.
+      assert (
+        forall (l2 : B),
+          mkCandidateSets G0 (l1 ++ l2) =
+          mkCandidateSets G0 l1 ++ mkCandidateSets G0 l2).
+      { intros. apply IHl1. auto. }
+      destruct (lV G0). omega.
+      destruct graphs_nondep.inEdgeDec.
+      destruct isMIS.
+      destruct LFMIS_dec. rewrite H0. auto.
+      rewrite H0. auto.
+      rewrite H0. auto.
+      destruct graphs_nondep.vertexConnected.
+      destruct isMIS.
+      destruct LFMIS_dec. rewrite H0. auto.
+      rewrite H0. auto.
+      rewrite H0. auto.
+      destruct independent_lGraph.
+      rewrite H0. auto.
+      destruct isMIS. destruct LFMIS_dec.
+      rewrite H0. auto.
+      rewrite H0. auto.
+      rewrite H0. auto.
+Qed. 
+
   Lemma stepQ_as_mkCandSets :
     forall n (p1 p2 : list A * B),
       queueStep_n n p1 p2 -> 
@@ -730,8 +426,37 @@ Qed.
   Proof.
     intros n p1 p2 H.
     induction H. intros.
-    + admit.
-    + admit.
+    + apply length_zero_iff_nil in H. subst.
+      apply queueStep_n_0 in H0. subst.
+      inversion H1; subst. rewrite H. auto.
+      auto.
+    + intros. apply queueStep_n_1 in H1; auto.
+      inversion H2; subst.
+      inversion H1. subst. simpl fst.
+      assert (l = nil).
+      {
+        simpl in H0. inversion H0.
+        apply length_zero_iff_nil.
+        unfold AasB in H7.
+        rewrite map_length in H7. auto.
+      }
+      subst. rewrite app_nil_l in *.
+      destruct a. destruct i. simpl fst in *.
+      assert (In (Index.mk pf, l) ((Index.mk pf, l) :: nil)). left; auto.
+      apply H6 in H5. simpl in H5. subst. simpl.
+      destruct (Nat.eq_dec). omega.
+      destruct graphs_nondep.inEdgeDec.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec. simpl. auto.
+      simpl. auto. omega. simpl. auto.
+      destruct graphs_nondep.vertexConnected.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec. simpl. auto.
+      simpl. auto. omega. simpl. auto.
+      destruct independent_lGraph. simpl. auto.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec. simpl. auto.
+      simpl. auto. omega. simpl. auto.
     + intros. inversion H3; subst.
       assert (exists l1 l2,
                 length l1 = n /\ length l2 = m /\ l1++l2 = (fst p1)).
@@ -758,14 +483,27 @@ Qed.
       f_equal.
       - replace l4 with (fst (l4, l5)).
         eapply IHqueueStep_n1; try auto.
-        * admit.
+        * unfold AasB. rewrite map_length. auto.
         * rewrite <- H6. apply H12.
-        * simpl. admit.
+        * constructor. auto. intros.
+          rewrite <- H9 in H7. apply H7.
+          apply in_or_app. left. auto.
         * auto.
-      - admit.
-      - admit.
-      - admit.
-Admitted.
+      - replace l6 with (fst (l6, l7)).
+        eapply IHqueueStep_n2.
+        * unfold AasB. rewrite map_length. auto.
+        * rewrite <- H8. apply H14.
+        * constructor. auto. intros.
+          rewrite <- H9 in H7. apply H7.
+          apply in_or_app. right. auto.
+        * omega.
+        * omega.
+        * auto.
+      - unfold AasB. rewrite map_app. auto.
+      - unfold AasB. rewrite map_app.
+        rewrite mkCandidateSets_app. auto.
+        simpl. auto.
+Qed.
 
   Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((Ox, nil)::nil, nil)) = PrintMIS G.
   Proof.
