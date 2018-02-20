@@ -7,6 +7,7 @@ Require Import Relations.
 Require Import List. 
 Require Import Omega.
 Require Import index.
+Require Import Program.Equality.
 (* Require Import Fin. *)
 Definition iN (N : nat) :=  Ix N.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -297,6 +298,15 @@ Qed.
                   queueStep_n n l1 l2 ->
                   queueStep_n m l2 l3 -> queueStep_n (n + m) l1 l3.
 
+
+
+  Inductive queueStep_n_simpl :
+    nat -> list A * B -> list A * B -> Prop :=
+  | QMSs_refl : forall l, queueStep_n_simpl 0 l l
+  | QMSs_step : forall l1 l2, queueStep l1 l2 -> queueStep_n_simpl 1 l1 l2
+  | QMSs_trans : forall n l1 l2 l3,
+                  queueStep_n n l1 l2 ->
+                  queueStep l2 l3 -> queueStep_n_simpl (S n) l1 l3.
   (*
       To work around this, we prove the following two lemmas
       regarding the base cases that can appear in induction
@@ -328,12 +338,37 @@ Qed.
       simpl; subst. apply IHqueueStep_n2. auto.
   Qed.
 
+  Lemma queueStep_n_swap :
+    forall n l1 l2,
+      queueStep_n_simpl n l1 l2 <->
+      queueStep_n n l1 l2.
+  Proof.
+    split.
+    + intros. inversion H; subst.
+      constructor. constructor. auto.
+      replace (S n0) with (n0 + 1).
+      apply QMS_trans with (l2 := l3).
+      auto. constructor. auto. omega.
+    + intros. induction H.
+      constructor. constructor. auto.
+      dependent induction m.
+      intros. simpl. rewrite plus_0_r.
+      inversion IHqueueStep_n2; subst. auto.
+      auto.
+      inversion IHqueueStep_n2; subst.
+      - replace (n + 1) with (S n).
+        econstructor; eauto. omega.
+      - replace (n + S m) with (S (n + m)).
+        econstructor. econstructor; eauto.
+        auto. omega.
+  Qed.
+    
   (* This guy helps clean up some obnoxious cases *)
   Lemma queueStep_n_inv :
     forall p1 p2 n m, queueStep_n (n + m) p1 p2 ->
       exists p_int, queueStep_n n p1 p_int /\ queueStep_n m p_int p2.
   Proof.
-    intros p1 p2. induction n; induction m.
+    intros.
   Admitted.
   
   Lemma queueStep_n_length_app :
@@ -368,12 +403,22 @@ Qed.
   Definition AasB : list A -> B :=
     fun l => map snd l.
 
-  Inductive matchQandCand : nat -> list A -> B -> Prop :=
+  (* This match relation should hold between
+      every iteration of our queueMIS and 
+      mkCandidate steps, excluding the final set of
+      steps when things are moved into the accumulator
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+      It holds when:
+         
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *)
+  Inductive matchQandCand : nat -> list A * B -> B -> Prop :=
   | matchQCand_intro :
-      forall lA lB v,
-        AasB lA = lB ->
-        (forall a, In a lA -> iXToNat (fst a) = v) ->
-        matchQandCand v lA lB.
+      forall p b v,
+        AasB (fst p) = b ->
+        (forall a, In a (fst p) -> iXToNat (fst a) = v) ->
+        (snd p = nil) ->
+        matchQandCand v p b.
 
   Lemma list_sep : forall (T : Type) (l : list T) n m,
     length l = n + m ->
@@ -412,38 +457,302 @@ Qed.
       rewrite H0. auto.
       rewrite H0. auto.
       rewrite H0. auto.
-Qed. 
+Qed.
+
+  Lemma queueStep_n_ltV :
+    forall n p1 p2,
+      queueStep_n n p1 p2 ->
+      n = length (fst p1) -> 
+      snd p1 = snd p2.
+  Proof.
+    intros n. induction n.
+    intros. apply queueStep_n_0 in H. rewrite H. auto.
+    auto. intros. 
+    induction n using (well_founded_induction lt_wf).
+    intros.
+  Admitted.
 
   Lemma stepQ_as_mkCandSets :
     forall n (p1 p2 : list A * B),
+      queueStep_n n p1 p2 ->      
+      forall v (lG : B),
+      length lG = n ->
+      matchQandCand v p1 lG ->
+      v < |V| ->  v <> 0 ->
+      matchQandCand (S v) p2 (mkCandidateSets (LiftGraph (S v) G) lG).
+  Proof.
+    intros n p1 p2 H. remember H as H'.
+    clear HeqH'. generalize p1 p2 H'.
+    clear H'.
+    dependent induction H.
+    + intros. apply length_zero_iff_nil in H. subst.
+      apply queueStep_n_0 in H'. subst.
+      inversion H0; subst.
+      constructor. rewrite H. auto.
+      intros. unfold AasB in H.
+      apply  map_eq_nil in H. rewrite H in H5.
+      inversion H5. auto. auto.
+    + intros. apply queueStep_n_1 in H'.
+      inversion H'; subst.
+      inversion H1; subst.
+      simpl in H0. inversion H0.
+      assert (l= nil).
+      {
+        unfold AasB in H7. rewrite map_length in H7.
+        apply length_zero_iff_nil. auto.
+      }
+      subst. rewrite app_nil_l in *.
+      destruct a. destruct i. simpl fst in *.
+      assert (In (Index.mk pf, l) ((Index.mk pf, l) :: nil)). left; auto.
+      apply H5 in H4. simpl in H4. simpl in H6. subst. simpl.
+      destruct (Nat.eq_dec). omega.
+      destruct graphs_nondep.inEdgeDec.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec.
+      constructor; simpl; intros; auto. destruct H4. subst. simpl.
+      auto. destruct H4. subst. simpl. auto. inversion H4.
+      unfold Accum. simpl. replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.    
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      auto. constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. simpl. simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      destruct graphs_nondep.vertexConnected.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec. constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6; subst. simpl. auto. inversion H8.
+      simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      auto.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      destruct independent_lGraph.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      destruct isMIS. rewrite LiftGraph_red.
+      destruct LFMIS_dec.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. subst. simpl. auto. inversion H8.
+      simpl. unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. subst. simpl.
+      unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      auto.
+      constructor. simpl. auto.
+      intros. inversion H4. subst; simpl. auto.
+      inversion H6. subst. simpl.
+      unfold Accum. simpl.
+      replace (v =? |V|) with false.
+      auto. symmetry. apply Nat.eqb_neq. auto.
+      auto.
+    + intros. inversion H2; subst.
+      assert (snd p2 = nil) as match_ob.
+      { admit. }
+      assert (exists ln lm,
+                length ln = n /\ length lm = m /\ ln++lm = (fst p1)).
+      { unfold AasB in H1. rewrite map_length in H1.
+        apply list_sep in H1. auto. }
+      destruct H5 as [nl [ml [H8 [H9 ] ] ] ].
+      rewrite <- H5.
+      replace (mkCandidateSets (LiftGraph (S v) G) (AasB (nl ++ ml))) with
+        ( mkCandidateSets (LiftGraph (S v) G) (AasB nl) ++
+          mkCandidateSets (LiftGraph (S v) G) (AasB ml)).
+      apply queueStep_n_inv in H'.
+      inversion H'. destruct H10.
+      destruct p1; simpl in *.
+      destruct (queueStep_n_exists (nl, l0)); simpl in H12.
+      destruct x0.
+      specialize (queueStep_n_length_app H12). intros.
+      rewrite <- H8 in H10. rewrite <- H5 in H10. apply H13 in H10.
+      destruct (queueStep_n_exists (ml, l0)); simpl in H14.
+      destruct x0. specialize (queueStep_n_length_app H14). intros.
+      destruct x. simpl in *.
+      rewrite H10, <- H9 in H11.
+      apply H15 in H11.
+      assert (length (AasB ml) = m).
+      { rewrite <- H9. unfold AasB. apply map_length. }
+      assert (length (AasB nl) = n).
+      { rewrite <- H8. unfold AasB. apply map_length. }
+      rewrite H9 in H14. rewrite H8 in H12.
+      specialize (IHqueueStep_n1 (nl, l0) (l4, l5) H12  v (AasB nl) H17).
+      specialize (IHqueueStep_n2 (ml, l0) (l6, l7) H14 v (AasB ml) H16).
+      assert (matchQandCand (S v) (l4, l5)
+        (mkCandidateSets (LiftGraph (S v) G) (AasB nl))).
+      {
+        apply IHqueueStep_n1. 
+        constructor. simpl. auto. simpl.
+        intros. apply H6. rewrite <- H5.
+        apply in_or_app. left. auto.
+        auto. omega. omega.
+      }
+      assert (matchQandCand (S v) (l6, l7)
+              (mkCandidateSets (LiftGraph (S v) G) (AasB ml))).
+      {
+        apply IHqueueStep_n2. 
+        constructor. simpl. auto. simpl.
+        intros. apply H6. rewrite <- H5.
+        apply in_or_app. right. auto.
+        auto. omega. omega.
+      }
+      inversion H18; subst. inversion H19; subst.
+      simpl in H5, H20. constructor.
+      rewrite H11.
+      unfold AasB. rewrite map_app. fold AasB.
+      unfold AasB in H5, H20. rewrite H5, H20.
+      auto. intros. rewrite H11 in H9.
+      apply in_app_or in H9. destruct H9.
+      apply H21. auto. apply H7. auto.
+      auto. 
+      unfold AasB. rewrite map_app.
+      rewrite mkCandidateSets_app. auto.
+      simpl. omega.
+Admitted.
+
+  Lemma stepQ_as_mkCandSets_terminal :
+    forall n (p1 p2 : list A * B),
       queueStep_n n p1 p2 -> 
-    forall v (p1 p2 : list A * B) (lG : B),
+      length (fst p1) = n ->
+      (forall a, In a (fst p1) -> iXToNat (fst a) = |V|) ->
+      p2 = (nil, AasB (fst p1) ++ (snd p1)).
+  Proof. Admitted.
+(*    intros n p1 p2 H. induction H.
+    + intros.
+      apply length_zero_iff_nil in H.
+      destruct l. simpl in H. subst.
+      simpl. auto.
+    + intros. inversion H. subst.
+      simpl in H0. inversion H0.
+      apply length_zero_iff_nil in H3. subst.
+      simpl. unfold stepCandSet, Accum.
+      destruct a. destruct i.
+      assert (i = |V|).
+      replace i with (iXToNat (fst (Index.mk pf, l))).
+      apply H1. left. auto. auto.
+      case_eq (Nat.eq_dec i |V|);
+      intros; try congruence.
+      simpl. subst. rewrite Nat.eqb_refl. auto.
+    +
+ inversion H.
+
+ induction n.
+    + intros.
+      apply length_zero_iff_nil in H0.
+      destruct p1. apply queueStep_n_0 in H.
+      unfold AasB. simpl in H0; subst. auto. auto.
+    + inversion H. subst.
+      apply queueStep_n_1 in H.
+      inversion H. subst. simpl in H0.
+      inversion H0.
+      apply length_zero_iff_nil in H4. subst.
+      rewrite app_nil_l in *.
+      simpl. unfold stepCandSet, Accum.
+      destruct a. destruct i.
+      assert (i = |V|).
+      replace i with (iXToNat (fst (Index.mk pf, l))).
+      apply H1. left. auto. auto.
+      case_eq (Nat.eq_dec i |V|);
+      intros; try congruence.
+      simpl. subst. rewrite Nat.eqb_refl. auto.
+      auto. subst.
+
+ simpl in H. simpl.
+  simpl. simpl in H. subst.
+      simpl. auto.
+
+ p1 p2 H.
+    in
+    induction H.
+    + intros.
+      apply length_zero_iff_nil in H.
+      destruct l. simpl in H. subst.
+      simpl. auto.
+    + intros. inversion H. subst.
+      simpl in H0. inversion H0.
+      apply length_zero_iff_nil in H3. subst.
+      simpl. unfold stepCandSet, Accum.
+      destruct a. destruct i.
+      assert (i = |V|).
+      replace i with (iXToNat (fst (Index.mk pf, l))).
+      apply H1. left. auto. auto.
+      case_eq (Nat.eq_dec i |V|);
+      intros; try congruence.
+      simpl. subst. rewrite Nat.eqb_refl. auto.
+    + intros.
+      assert (exists la lb,
+                length la = n /\ length lb = m /\ la++lb = (fst l1)).
+      { apply list_sep in H1. auto. }
+      destruct H3 as [nl [ml [H4 [H5 ] ] ] ].      
+      destruct (queueStep_n_exists (ml, (snd l1))). simpl in H6.
+      eapply IHqueueStep_n1 in H6.      
+      inver
+      destruct H3 as [nl [ml [H6 [H8 ] ] ] ].
+      rewrite <- H9.
+
+ auto. simpl in H3.
+ simpl.
+      destruct Nat.eqb.
+
+     
+
+ auto. simpl.
+    apply length_nil_0 in H.
+    simpl.
+
+  simpl.      
+   
+        forall v (p1 p2 : list A * B) (lG : B),
       length lG = n ->
       queueStep_n n p1 p2 ->
+      snd p1 = nil ->
       matchQandCand v (fst p1) lG ->
-      v < |V| ->  v <> 0 ->
-      AasB (fst p2) = mkCandidateSets (LiftGraph (S v) G) lG.
+      v = |V| ->  v <> 0 ->
+      snd p2 = mkCandidateSets G lG.
   Proof.
     intros n p1 p2 H.
     induction H. intros.
     + apply length_zero_iff_nil in H. subst.
       apply queueStep_n_0 in H0. subst.
-      inversion H1; subst. rewrite H. auto.
-      auto.
+      inversion H1; subst. simpl. rewrite H0.
+      simpl. case_eq |V|. intros. omega. auto. auto.
     + intros. apply queueStep_n_1 in H1; auto.
-      inversion H2; subst.
+      inversion H3; subst.
       inversion H1. subst. simpl fst.
       assert (l = nil).
       {
         simpl in H0. inversion H0.
         apply length_zero_iff_nil.
-        unfold AasB in H7.
-        rewrite map_length in H7. auto.
+        unfold AasB in H6.
+        rewrite map_length in H6. auto.
       }
       subst. rewrite app_nil_l in *.
       destruct a. destruct i. simpl fst in *.
       assert (In (Index.mk pf, l) ((Index.mk pf, l) :: nil)). left; auto.
-      apply H6 in H5. simpl in H5. subst. simpl.
+      apply H7 in H4. simpl in H4. subst. simpl.
       destruct (Nat.eq_dec). omega.
       destruct graphs_nondep.inEdgeDec.
       destruct isMIS. rewrite LiftGraph_red.
@@ -457,53 +766,9 @@ Qed.
       destruct isMIS. rewrite LiftGraph_red.
       destruct LFMIS_dec. simpl. auto.
       simpl. auto. omega. simpl. auto.
-    + intros. inversion H3; subst.
-      assert (exists l1 l2,
-                length l1 = n /\ length l2 = m /\ l1++l2 = (fst p1)).
-      { unfold AasB in H1. rewrite map_length in H1.
-        apply list_sep in H1. auto. }
-      destruct H6 as [nl [ml [H6 [H8 ] ] ] ].
-      rewrite <- H9.
-      replace (mkCandidateSets (LiftGraph (S v) G) (AasB (nl ++ ml))) with
-        ( mkCandidateSets (LiftGraph (S v) G) (AasB nl) ++
-          mkCandidateSets (LiftGraph (S v) G) (AasB ml)).
-      apply queueStep_n_inv in H2.
-      inversion H2. destruct H10.
-      destruct p1; simpl in *.
-      destruct (queueStep_n_exists (nl, l0)); simpl in H12.
-      destruct x0.
-      specialize (queueStep_n_length_app H12). intros.
-      rewrite <- H9, <- H6 in H10. apply H13 in H10.
-      destruct (queueStep_n_exists (ml, l0)); simpl in H14.
-      destruct x0. specialize (queueStep_n_length_app H14). intros.
-      destruct x. simpl in *.
-      rewrite H10, <- H8 in H11.
-      apply H15 in H11. rewrite H11.
-      replace (AasB (l4 ++ l6)) with (AasB l4 ++ AasB l6).
-      f_equal.
-      - replace l4 with (fst (l4, l5)).
-        eapply IHqueueStep_n1; try auto.
-        * unfold AasB. rewrite map_length. auto.
-        * rewrite <- H6. apply H12.
-        * constructor. auto. intros.
-          rewrite <- H9 in H7. apply H7.
-          apply in_or_app. left. auto.
-        * auto.
-      - replace l6 with (fst (l6, l7)).
-        eapply IHqueueStep_n2.
-        * unfold AasB. rewrite map_length. auto.
-        * rewrite <- H8. apply H14.
-        * constructor. auto. intros.
-          rewrite <- H9 in H7. apply H7.
-          apply in_or_app. right. auto.
-        * omega.
-        * omega.
-        * auto.
-      - unfold AasB. rewrite map_app. auto.
-      - unfold AasB. rewrite map_app.
-        rewrite mkCandidateSets_app. auto.
-        simpl. auto.
-Qed.
+*)
+
+    
 
   Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((Ox, nil)::nil, nil)) = PrintMIS G.
   Proof.
