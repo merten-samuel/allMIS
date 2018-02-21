@@ -305,8 +305,9 @@ Qed.
   | QMSs_refl : forall l, queueStep_n_simpl 0 l l
   | QMSs_step : forall l1 l2, queueStep l1 l2 -> queueStep_n_simpl 1 l1 l2
   | QMSs_trans : forall n l1 l2 l3,
-                  queueStep_n n l1 l2 ->
+                  queueStep_n_simpl n l1 l2 ->
                   queueStep l2 l3 -> queueStep_n_simpl (S n) l1 l3.
+
   (*
       To work around this, we prove the following two lemmas
       regarding the base cases that can appear in induction
@@ -338,47 +339,235 @@ Qed.
       simpl; subst. apply IHqueueStep_n2. auto.
   Qed.
 
+  Lemma queueStep_n_swap_aux : 
+  forall n l1 l2,
+      queueStep_n_simpl n l1 l2 ->
+      queueStep_n n l1 l2.
+  Proof.
+    intros. dependent induction H; subst.
+    constructor. constructor. auto.
+    replace (S n) with (n + 1).
+    apply QMS_trans with (l2 := l2).
+    auto. constructor. auto. omega.
+  Qed.
+
+
   Lemma queueStep_n_swap :
     forall n l1 l2,
       queueStep_n_simpl n l1 l2 <->
       queueStep_n n l1 l2.
   Proof.
     split.
-    + intros. inversion H; subst.
-      constructor. constructor. auto.
-      replace (S n0) with (n0 + 1).
-      apply QMS_trans with (l2 := l3).
-      auto. constructor. auto. omega.
-    + intros. induction H.
-      constructor. constructor. auto.
-      dependent induction m.
-      intros. simpl. rewrite plus_0_r.
-      inversion IHqueueStep_n2; subst. auto.
-      auto.
-      inversion IHqueueStep_n2; subst.
-      - replace (n + 1) with (S n).
-        econstructor; eauto. omega.
-      - replace (n + S m) with (S (n + m)).
-        econstructor. econstructor; eauto.
-        auto. omega.
+    + apply queueStep_n_swap_aux.
+    + intros. dependent induction H.
+      - constructor.
+      - constructor. auto.
+      - dependent induction m.
+        intros. simpl.
+        apply queueStep_n_0 in H0. subst.
+        replace (n+0) with n; try omega. auto.
+        auto.
+        inversion IHqueueStep_n2; subst.
+        * replace (n + 1) with (S n); try omega.
+          econstructor; eauto.
+        * replace (n + S m) with (S (n + m)); try omega.
+          inversion IHqueueStep_n2; subst.
+          { replace (n + 0) with n; try omega.
+            econstructor. apply IHqueueStep_n1. auto.
+          }
+          { apply QMSs_trans with (l2 := l4); auto.
+            apply IHm with (l2 := l2); auto.
+            apply queueStep_n_swap_aux. auto.
+          }
   Qed.
     
-  (* This guy helps clean up some obnoxious cases *)
-  Lemma queueStep_n_inv :
-    forall p1 p2 n m, queueStep_n (n + m) p1 p2 ->
-      exists p_int, queueStep_n n p1 p_int /\ queueStep_n m p_int p2.
+  Lemma queueStep_n_lt_l :
+    forall n m p1 p2,
+      m < n -> queueStep_n n p1 p2 ->  
+      exists p3, queueStep_n m p1 p3.
+  Proof.
+    intros n.
+    induction n.
+    intros. omega.
+    intros. inversion H; subst.
+    rewrite <- queueStep_n_swap in H0.
+    inversion H0; subst. exists p1. constructor.
+    exists l2. apply queueStep_n_swap.  auto.
+    assert (m < n). omega.
+    rewrite <- queueStep_n_swap in H0.
+    inversion H0; subst.
+    omega. apply queueStep_n_swap_aux  in H4. 
+    apply (IHn m) in H4. auto. auto.
+  Qed.
+
+  Lemma queueStep_n_uniq :
+    forall n p1 p2 p3,
+      queueStep_n n p1 p2 ->
+      queueStep_n n p1 p3 ->
+      p2 = p3.
+  Proof.
+    induction n.
+    intros. apply queueStep_n_0 in H; auto. 
+    apply queueStep_n_0 in H0; auto. subst. auto.
+    intros. rewrite <- queueStep_n_swap in H, H0.
+    inversion H; subst. inversion H0; subst.
+    inversion H2; subst. inversion H1; subst.
+    inversion H3; subst. auto.
+    apply queueStep_n_swap in H3. 
+    apply queueStep_n_0 in H3; subst.
+    inversion H2; subst. inversion H4; subst.
+    inversion H1; subst. auto. auto.
+    inversion H0; subst.
+    apply queueStep_n_swap in H2. 
+    apply queueStep_n_0 in H2.
+    subst.
+    inversion H3; subst. inversion H4; subst.
+    inversion H1; subst. auto. auto.
+    assert (l2 = l0). eapply IHn.
+    apply queueStep_n_swap in H2.
+    apply queueStep_n_swap in H4.
+    eauto. apply queueStep_n_swap in H4.
+    auto. 
+    inversion H; subst.
+    apply queueStep_n_swap in H2. 
+    apply queueStep_n_0 in H2; auto.
+    apply queueStep_n_swap in H4.
+    apply queueStep_n_0 in H4; auto.
+    subst. inversion H5; inversion H3; subst.
+    inversion H9; subst. auto.
+    inversion H5; inversion H3; subst.
+    inversion H11; subst. auto.
+  Qed.
+(*
+  Lemma queueStep_n_lt_r :
+    forall n m p1 p2 p3,
+      queueStep_n (n+m) p1 p2 ->
+      queueStep_n n p1 p3 ->
+      queueStep_n m p3 p2.
   Proof.
     intros.
-  Admitted.
+    rewrite <- queueStep_n_swap.
+    dependent induction m.
+    intros. replace (n+0) with n in H; try omega.
+    apply (queueStep_n_uniq H0) in H. subst. constructor.
+    replace (n + S m) with (S (n + m)) in H; try omega.
+    inversion H; subst. assert (m = 0). omega.
+    assert (n = 0). omega. subst. constructor.
+    simpl in H. apply queueStep_n_0 in H0. subst. auto.
+    auto.
+    apply queueStep_n_0 in H.
+
+ H0.
+    
+    
+    apply queueStep_n_swap
+    econstructor.
+    apply (queueStep_n_uniq H) in H0. subst.
+    constructor. intros.
+    replace (n + S m) with (S (n + m)) in H; try omega.
+    apply queueStep_n_swap in H. inversion H.
+    assert (n = 0). omega. assert (m=0). omega.
+    subst. econstructor. simpl in H.
+    apply queueStep_n_swap in H. 
+    apply queueStep_n_1 in H.
+    apply queueStep_n_0 in H0. subst. auto.
+    auto. auto. subst. 
+ simpl in H. apply queueStep_n_0. in H0.
+    subst. simpl in *. auto. auto.
+    intros. eapply IHn. 
+      exists p3, queueStep_n m p1 p3.
+*)
+
+  (* This guy helps clean up some obnoxious cases *)
+  Lemma queueStep_n_inv :
+    forall n m p1 p2, queueStep_n (n + m) p1 p2 ->
+      exists p_int, queueStep_n n p1 p_int /\ queueStep_n m p_int p2.
+  Proof.
+    intros. rewrite <- queueStep_n_swap in H.  
+    dependent induction H.
+    + symmetry in x.
+      apply plus_is_O in x. destruct x. subst.
+      exists l; split; constructor.
+    + symmetry in x. apply Nat.eq_add_1 in x.
+      destruct x; inversion H0; subst.
+      exists l2; split; constructor; auto.
+      exists l1; split; constructor; auto.
+    + case_eq m; intros. subst. 
+      replace (n + 0) with n in x; try omega.
+      exists l3. subst. split.
+      rewrite <- queueStep_n_swap. econstructor; eauto.
+      constructor. subst.
+      replace (n + S n1) with (S (n + n1)) in x.
+      inversion x. subst.
+      specialize (IHqueueStep_n_simpl n n1 (eq_refl _)).
+      destruct IHqueueStep_n_simpl. inversion H1.
+      exists x0. split; auto.
+      rewrite <- queueStep_n_swap.
+      econstructor.
+      rewrite queueStep_n_swap. eauto.
+      auto. omega.
+  Qed.
   
   Lemma queueStep_n_length_app :
+    forall a1 a1' b1 b1',
+      queueStep_n (length a1) (a1, b1) (a1', b1') ->
+      forall a2,
+        queueStep_n (length a1) (a1 ++ a2, b1) (a2 ++ a1', b1').
+  Proof.
+    intros a1. induction a1.
+    + intros. simpl in *.
+      apply queueStep_n_0 in H. inversion H.
+      subst. rewrite app_nil_r. constructor. auto.
+    + intros. simpl in *.
+      intros. replace (S (length a1)) with (1 + (length a1)) in *;
+      try omega. apply queueStep_n_inv in H.
+      inversion H. destruct H0.
+      destruct x. econstructor.
+      constructor. econstructor. eauto.
+      reflexivity. apply queueStep_n_1 in H0; auto.
+      case_eq a1.
+      * intros. subst. simpl in *.
+        apply queueStep_n_0 in H1. inversion H1; subst.
+        inversion H0; subst. inversion H3; subst.
+        inversion H2; subst. constructor. auto.
+      * intros. (* we know a1 has some length  step to pred of l*)
+        subst. 
+Admitted.
+
+  Lemma queueStep_n_ind_b :
+    forall n a1 a2 a2' b1 b1' b2 b2',
+      queueStep_n n (a1, b1) (a2, b2) ->
+      queueStep_n n (a1, b1') (a2', b2') -> 
+        a2 = a2'.
+  Proof.
+    induction n. intros.
+    apply queueStep_n_0 in H.
+    apply queueStep_n_0 in H0.
+    inversion H. inversion H0.
+    subst. auto. auto. auto.
+    intros. replace (S n) with (n+1) in *; try omega.
+    apply queueStep_n_inv in H.
+    apply queueStep_n_inv in H0.
+    inversion H. inversion H0.
+    destruct H1, H2. destruct x, x0.
+    specialize (IHn _ _ _ _ _ _ _ H1 H2). subst.
+    apply queueStep_n_1 in H3. apply queueStep_n_1 in H4.
+    inversion H3; inversion H4; subst.
+    inversion H5; subst. inversion H9; subst.
+    inversion H10. subst. inversion H6. subst.
+    auto. auto. auto.
+  Qed. 
+
+ Lemma queueStep_n_length_app' :
     forall a1 a1' b1 b1',
       queueStep_n (length a1) (a1, b1) (a1', b1') ->
       forall a2 b2 p,
         queueStep_n (length a1) (a1 ++ a2, b2) p ->
         fst p = a2 ++ a1'.
   Proof.
-
+    intros.
+    specialize (@queueStep_n_length_app a1 a1' b1 b1' H a2).
+    intros.
   Admitted.
 
   Lemma queueStep_n_exists :
@@ -460,16 +649,27 @@ Qed.
 Qed.
 
   Lemma queueStep_n_ltV :
-    forall n p1 p2,
-      queueStep_n n p1 p2 ->
-      n = length (fst p1) -> 
+    forall p1 p2,
+      queueStep_n (length (fst p1)) p1 p2 ->
+      (forall a, In a (fst p1) -> (iXToNat (fst a)) < |V|) ->       
       snd p1 = snd p2.
   Proof.
-    intros n. induction n.
-    intros. apply queueStep_n_0 in H. rewrite H. auto.
-    auto. intros. 
-    induction n using (well_founded_induction lt_wf).
-    intros.
+    intros p1. destruct p1.
+    generalize dependent l0.
+    simpl. induction l.
+    intros. simpl in *.
+    apply queueStep_n_0 in H; auto.
+    inversion H; subst. auto.
+    intros. simpl in H.
+    rewrite <- queueStep_n_swap in H.
+    assert (iXToNat (fst a) < |V|). apply H0.
+    left. auto.
+    assert (iXToNat (fst a) =? |V| = false).
+    apply Nat.eqb_neq. omega. 
+    inversion H; subst. inversion H4; subst.
+    simpl. unfold Accum. inversion H5. subst.
+    rewrite  H2. auto.
+    
   Admitted.
 
   Lemma stepQ_as_mkCandSets :
@@ -572,8 +772,13 @@ Qed.
       auto.
     + intros. inversion H2; subst.
       assert (snd p2 = nil) as match_ob.
-      { admit. }
-      assert (exists ln lm,
+      { rewrite <- H7. symmetry.
+        apply queueStep_n_ltV.
+        auto. unfold AasB in H1. rewrite map_length in H1.
+        rewrite H1. auto. intros.
+        apply H6 in H5. subst. auto.
+      }
+        assert (exists ln lm,
                 length ln = n /\ length lm = m /\ ln++lm = (fst p1)).
       { unfold AasB in H1. rewrite map_length in H1.
         apply list_sep in H1. auto. }
@@ -587,10 +792,10 @@ Qed.
       destruct p1; simpl in *.
       destruct (queueStep_n_exists (nl, l0)); simpl in H12.
       destruct x0.
-      specialize (queueStep_n_length_app H12). intros.
+      specialize (queueStep_n_length_app' H12). intros.
       rewrite <- H8 in H10. rewrite <- H5 in H10. apply H13 in H10.
       destruct (queueStep_n_exists (ml, l0)); simpl in H14.
-      destruct x0. specialize (queueStep_n_length_app H14). intros.
+      destruct x0. specialize (queueStep_n_length_app' H14). intros.
       destruct x. simpl in *.
       rewrite H10, <- H9 in H11.
       apply H15 in H11.
@@ -631,7 +836,7 @@ Qed.
       unfold AasB. rewrite map_app.
       rewrite mkCandidateSets_app. auto.
       simpl. omega.
-Admitted.
+Qed.
 
   Lemma stepQ_as_mkCandSets_terminal :
     forall n (p1 p2 : list A * B),
