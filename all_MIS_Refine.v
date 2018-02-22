@@ -877,142 +877,65 @@ Qed.
       simpl. omega.
 Qed.
 
+  Lemma length_ind :
+    forall (T : Type) (P : list T -> Prop),
+      (P nil) ->
+      (forall n,
+        (forall (l : list T), (length l = n) -> P l) ->
+        (forall (l' : list T), (length l' = S n) -> P l')) ->
+      forall l, P l.
+  Proof.
+    intros. remember (length l) as x. generalize dependent l.
+    dependent induction x. intros. symmetry in Heqx.
+    apply length_zero_iff_nil in Heqx. subst. auto.
+    intros. destruct l. inversion Heqx. 
+    simpl in Heqx. inversion Heqx. 
+    apply (H0 x). intros. apply IHx. auto. auto.
+  Qed.
+
+    Require Import Permutation.
+    Check Permutation.
   Lemma stepQ_as_mkCandSets_terminal :
     forall n (p1 p2 : list A * B),
       queueStep_n n p1 p2 -> 
       length (fst p1) = n ->
       (forall a, In a (fst p1) -> iXToNat (fst a) = |V|) ->
-      p2 = (nil, AasB (fst p1) ++ (snd p1)).
-  Proof. Admitted.
-(*    intros n p1 p2 H. induction H.
-    + intros.
-      apply length_zero_iff_nil in H.
-      destruct l. simpl in H. subst.
-      simpl. auto.
-    + intros. inversion H. subst.
-      simpl in H0. inversion H0.
-      apply length_zero_iff_nil in H3. subst.
-      simpl. unfold stepCandSet, Accum.
-      destruct a. destruct i.
-      assert (i = |V|).
-      replace i with (iXToNat (fst (Index.mk pf, l))).
-      apply H1. left. auto. auto.
-      case_eq (Nat.eq_dec i |V|);
-      intros; try congruence.
-      simpl. subst. rewrite Nat.eqb_refl. auto.
-    +
- inversion H.
-
- induction n.
-    + intros.
-      apply length_zero_iff_nil in H0.
-      destruct p1. apply queueStep_n_0 in H.
-      unfold AasB. simpl in H0; subst. auto. auto.
-    + inversion H. subst.
-      apply queueStep_n_1 in H.
-      inversion H. subst. simpl in H0.
-      inversion H0.
-      apply length_zero_iff_nil in H4. subst.
-      rewrite app_nil_l in *.
-      simpl. unfold stepCandSet, Accum.
-      destruct a. destruct i.
-      assert (i = |V|).
-      replace i with (iXToNat (fst (Index.mk pf, l))).
-      apply H1. left. auto. auto.
-      case_eq (Nat.eq_dec i |V|);
-      intros; try congruence.
-      simpl. subst. rewrite Nat.eqb_refl. auto.
-      auto. subst.
-
- simpl in H. simpl.
-  simpl. simpl in H. subst.
-      simpl. auto.
-
- p1 p2 H.
-    in
-    induction H.
-    + intros.
-      apply length_zero_iff_nil in H.
-      destruct l. simpl in H. subst.
-      simpl. auto.
-    + intros. inversion H. subst.
-      simpl in H0. inversion H0.
-      apply length_zero_iff_nil in H3. subst.
-      simpl. unfold stepCandSet, Accum.
-      destruct a. destruct i.
-      assert (i = |V|).
-      replace i with (iXToNat (fst (Index.mk pf, l))).
-      apply H1. left. auto. auto.
-      case_eq (Nat.eq_dec i |V|);
-      intros; try congruence.
-      simpl. subst. rewrite Nat.eqb_refl. auto.
-    + intros.
-      assert (exists la lb,
-                length la = n /\ length lb = m /\ la++lb = (fst l1)).
-      { apply list_sep in H1. auto. }
-      destruct H3 as [nl [ml [H4 [H5 ] ] ] ].      
-      destruct (queueStep_n_exists (ml, (snd l1))). simpl in H6.
-      eapply IHqueueStep_n1 in H6.      
-      inver
-      destruct H3 as [nl [ml [H6 [H8 ] ] ] ].
-      rewrite <- H9.
-
- auto. simpl in H3.
- simpl.
-      destruct Nat.eqb.
-
-     
-
- auto. simpl.
-    apply length_nil_0 in H.
-    simpl.
-
-  simpl.      
-   
-        forall v (p1 p2 : list A * B) (lG : B),
-      length lG = n ->
-      queueStep_n n p1 p2 ->
-      snd p1 = nil ->
-      matchQandCand v (fst p1) lG ->
-      v = |V| ->  v <> 0 ->
-      snd p2 = mkCandidateSets G lG.
+      fst p2 = nil /\ Permutation (snd p2) (AasB (fst p1) ++ (snd p1)).
   Proof.
-    intros n p1 p2 H.
-    induction H. intros.
-    + apply length_zero_iff_nil in H. subst.
-      apply queueStep_n_0 in H0. subst.
-      inversion H1; subst. simpl. rewrite H0.
-      simpl. case_eq |V|. intros. omega. auto. auto.
-    + intros. apply queueStep_n_1 in H1; auto.
-      inversion H3; subst.
-      inversion H1. subst. simpl fst.
-      assert (l = nil).
+    destruct p1. generalize dependent l0.
+    generalize n. clear n.
+    induction l using length_ind.
+    - intros. simpl in *. subst. simpl in *.
+      apply queueStep_n_0 in H. subst. simpl. split; auto. auto.
+    - intros. subst. case_eq l; intros; subst;
+      inversion H0; subst. simpl fst in *.
+      simpl snd in *.
+      replace (length (p::l1)) with (1 + length l1) in H1.
+      apply queueStep_n_inv in H1.
+      destruct H1 as [p_int [H2 H4]].
+      apply queueStep_n_1 in H2.
+      inversion H2; subst. inversion H1; subst.
+      assert (stepCandSet a = nil).
       {
-        simpl in H0. inversion H0.
-        apply length_zero_iff_nil.
-        unfold AasB in H6.
-        rewrite map_length in H6. auto.
+        unfold stepCandSet.
+        assert (iXToNat (fst a) = |V|). apply H3. left. auto.
+        destruct a. destruct i.
+        case (Nat.eq_dec i |V|); intros. auto. simpl in H5. omega.
       }
-      subst. rewrite app_nil_l in *.
-      destruct a. destruct i. simpl fst in *.
-      assert (In (Index.mk pf, l) ((Index.mk pf, l) :: nil)). left; auto.
-      apply H7 in H4. simpl in H4. subst. simpl.
-      destruct (Nat.eq_dec). omega.
-      destruct graphs_nondep.inEdgeDec.
-      destruct isMIS. rewrite LiftGraph_red.
-      destruct LFMIS_dec. simpl. auto.
-      simpl. auto. omega. simpl. auto.
-      destruct graphs_nondep.vertexConnected.
-      destruct isMIS. rewrite LiftGraph_red.
-      destruct LFMIS_dec. simpl. auto.
-      simpl. auto. omega. simpl. auto.
-      destruct independent_lGraph. simpl. auto.
-      destruct isMIS. rewrite LiftGraph_red.
-      destruct LFMIS_dec. simpl. auto.
-      simpl. auto. omega. simpl. auto.
-*)
-
-    
+      rewrite H5, app_nil_r in H4.
+      specialize (H l eq_refl (length l) (Accum a b) p2 H4 eq_refl).
+      assert ((forall a : A, In a l -> iXToNat (fst a) = |V|)).
+      {
+        intros. apply H3. right. auto.
+      }
+      apply H in H6. destruct H6.
+      split. auto. eapply Permutation_trans. apply H7.
+      unfold Accum. assert (iXToNat (fst a) = |V|). apply H3. left. auto.
+      apply Nat.eqb_eq in H8. rewrite H8.
+      unfold AasB. simpl. apply Permutation_sym.
+      apply Permutation_cons_app. apply Permutation_refl.
+      auto.
+  Qed.
 
   Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((Ox, nil)::nil, nil)) = PrintMIS G.
   Proof.
