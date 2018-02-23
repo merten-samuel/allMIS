@@ -217,6 +217,7 @@ End WfIterStack.
         by natural numbers anyway.
 
 *)
+Require Import  Coq.Classes.RelationClasses.
 Section WFIterQueue.
   Variable A : Type.
   Variable Ra : A -> A -> Prop.
@@ -224,6 +225,7 @@ Section WFIterQueue.
 
   Variable Ra_wf : well_founded Ra.
   Variable Ra_trans : forall a1 a2 a3, Ra a1 a2 -> Ra a2 a3 -> Ra a1 a3.
+  Program Instance Ra_t : Transitive Ra.
   Variable Eqb_eq : equivalence _ Eqa.
 
   Definition Rord := optR _ (prodOrderLeft _ _ lt Ra).
@@ -257,6 +259,32 @@ Section WFIterQueue.
       destruct Eqb_eq. apply equiv_sym. auto.
   Qed.    
 
+    Add Parametric Relation : A Eqa
+      reflexivity proved by (@equiv_refl A Eqa Eqb_eq) 
+      symmetry proved by (@equiv_sym A Eqa Eqb_eq)
+      transitivity proved by (@equiv_trans A Eqa Eqb_eq)
+    as eqA.
+
+    
+    Require Import Setoid.
+
+    Add Morphism Ra
+        with signature Eqa ==> Eqa ==> iff
+          as Ra_morph.
+    Proof.
+      intros.
+      split; intros.
+      eapply Eqb_resp_RaL in H; eauto.
+      eapply Eqb_resp_RaR in H0; eauto.
+      assert (Ra y x0).
+      eapply Eqb_resp_RaR; eauto.
+      symmetry.
+      auto.
+      eapply Eqb_resp_RaL in H2; eauto.
+      symmetry.
+      auto.
+    Qed.
+
   Fixpoint maxLocR (l : list A) : option (nat * A) :=
     match l with
     | nil => None
@@ -271,6 +299,19 @@ Section WFIterQueue.
       end
     end.
 
+  Inductive MaxLocR : list A -> option (nat * A) -> Prop :=
+  | max_nil : MaxLocR nil None
+  | max_None : forall l a, MaxLocR l None ->
+                           MaxLocR (a :: l) (Some (0, a))
+  | max_Some_right : forall n l a a' x,
+      MaxLocR l (Some (n,a')) -> R_total a a' = inright x ->
+      MaxLocR (a :: l) (Some (0, a))
+  | max_Some_left : forall n l a a' x,
+      MaxLocR l (Some (n,a')) -> R_total a a' = inleft x ->
+      MaxLocR (a :: l) (Some (S n, a')).
+
+  Hint Constructors MaxLocR.
+
   Lemma maxLocR_nil : forall l, 
     maxLocR l = None <-> l = nil.
   Proof.
@@ -280,6 +321,38 @@ Section WFIterQueue.
       destruct (maxLocR l);
       [destruct p | inversion H1]. 
       destruct (R_total a a0); inversion H1.
+  Qed.
+
+  Lemma maxLocR_equiv : forall l loc, 
+      maxLocR l = loc <-> MaxLocR l loc.
+  Proof.
+    split; intros.
+    Focus 2.
+    induction H; auto; simpl; try rewrite IHMaxLocR; simpl;
+      try rewrite H0; auto.
+    generalize dependent loc.
+    induction l; intros.
+    inversion H.
+    simpl.
+    constructor.
+    simpl in H.
+    case_eq (maxLocR l); intros.
+    destruct p.
+    rewrite H0 in H.
+    case_eq (R_total a a0); intros;
+      assert (MaxLocR l (Some (n, a0)));
+      auto;
+      subst.
+      rewrite H1.
+      econstructor; eauto.
+    +
+      rewrite H1; econstructor 3; eauto.
+    +
+      assert (MaxLocR l None).
+      auto.
+      rewrite H0 in H.
+      subst.
+      constructor; auto.
   Qed.
 
   Lemma maxLocR_mem : forall l a n,
@@ -326,8 +399,58 @@ Section WFIterQueue.
     maxLocR (a::l) = Some (S n, a') ->
       maxLocR l = Some (n, a').
   Proof.
-    induction l.
+    intros.
+    inversion H.
+    destruct (maxLocR l).
+    destruct p.
+    +
+      destruct (R_total a a0).
+      -
+        destruct s;
+          inversion H1;
+          subst;
+          auto.
+      -
+        inversion H1.
+   +
+     inversion H1.
+  Qed.
+
+  Require Import ProofIrrelevance.
+  Lemma maxLocR_weaken : forall a a' l,
+      MaxLocR (a :: a' :: l) (Some (0, a)) ->
+      MaxLocR (a :: l) (Some (0, a)).
+  Proof.
+    intros.
+    inversion H;
+    subst.
+    inversion H1.
+    inversion H2;
+    subst.
+    clear H2.
+    +
+      inversion H1.
+      subst.
+      constructor.
+      auto.
+    +
+      clear H7.
+      clear H3.
+      clear H.
+      clear H2.
+      apply Ra_trans with (a1 := a'1) in x; auto.
+      apply maxLocR_equiv in H5.
+      apply maxLocR_equiv.
+      admit.
+    +
+      clear H7.
+      clear H3.
+      destruct x0.
+      admit.
+      rewrite <- e in x.
+      admit.
   Admitted.
+
   Lemma maxLocR_uniqR : forall l a a',
     maxLocR (a::l) = Some (0, a') -> a = a'.
   Proof.
@@ -338,20 +461,84 @@ Section WFIterQueue.
 
   Lemma maxLocR_hdR : forall l a, 
     maxLocR (a::l) = Some (0, a) ->
-      forall a', In a' l -> Ra a' a.
+    (forall a', In a' l -> Ra a' a).
   Proof.
-    intros. simpl in H.
-    case_eq (maxLocR l); intros.
-    + admit.
-    + apply maxLocR_nil in H1. subst. inversion H0.
-  Admitted.
+    intros.
+    apply maxLocR_equiv in H.
+    generalize dependent a.
+    generalize dependent a'.
+    induction l.
+    inversion 1.
+    intros.
+    inversion H;
+    subst.
+    apply maxLocR_equiv in H2.
+    apply maxLocR_nil in H2.
+    inversion H2.
+    clear H4.
+    clear H.
+    +
+      destruct H0.
+      -
+        subst.
+        clear IHl.
+        inversion H3;
+          subst; auto.
+        clear H5.
+        clear H3.
+        destruct x0.
+        eapply Ra_trans; eauto.
+        rewrite e.
+        auto.
+      -
+        inversion H3; subst.
+        { inversion H1; eauto. }
+        { apply IHl with (a' := a') in H3; eauto. }
+        { clear H6.
+          destruct x0.
+          apply maxLocR_equiv in H3.
+          apply maxLocR_max  with (a' := a') in H3.
+          destruct H3; eauto.
+          rewrite H0.
+          auto.        
+          intuition.
+          rewrite <- e in x.
+          apply maxLocR_equiv in H3.
+          apply maxLocR_max  with (a' := a') in H3.          
+          destruct H3; eauto.
+          rewrite <- e in H0.
+          transitivity a; eauto.
+          rewrite H0.
+          rewrite <- e.
+          auto.
+          right; auto.
+        }
+  Qed.
+
+  Lemma maxLocR_weak : forall l a l' n a0,
+      In a0 l ->
+      maxLocR (l ++ a :: l') = Some (n, a0) ->
+      maxLocR (l ++ l') = Some (n, a0).
+  Proof.
+    induction l; intros.
+    simpl.
+    inversion H.
+    destruct H.
+    subst.
+    Admitted.
 
   Lemma maxLocR_app : forall l l' a n,
     maxLocR l = Some (n, a) ->
     (forall a', In a' l' -> Ra a' a) ->
     maxLocR (l ++ l') = Some (n, a).
   Proof.
-  Admitted.
+    intros.
+    generalize dependent a.
+    generalize dependent n.
+    generalize dependent l.
+    induction l'.
+    intros.
+Admitted.
 
   Definition maxLoC_ord := (wf_inverse_image  _ _ Rord maxLocR Rord_wf).
 
