@@ -49,21 +49,30 @@ Section RefineMIS.
 
   (* ltof (iN (|V|)) iXToNat n m). *)
 
+  Ltac destr :=
+    match goal with
+    | H : context[exists _, _]  |- _ => destruct H
+    |H : _ /\ _  |- _=> destruct H
+    |H : _ /\ _ /\ _  |- _=> destruct H
+    |H : _ /\ _ /\ _ /\ _  |- _=> destruct H
+    |H : _ /\ _ /\ _ /\ _ /\ _ |- _=> destruct H
+    | |- _ /\ _ => split
+    end.
+
   Ltac solve_by_inverts n :=
     match goal with
-    | H : _ /\ _ |- _ => destruct H
-    | |- _ /\ _ => split
     | H : ?T |- _ => 
-      match type of T with Prop =>
-                           solve [ 
-                               inversion H; try reflexivity; eauto;
-                               match n with S (S (?n')) => subst; solve_by_inverts (n') end ]
+      match type of T with
+        Prop =>
+        solve [ 
+            inversion H; try reflexivity; eauto;
+        match n with S (S (?n')) => subst; solve_by_inverts (n') end ]
       end end;
     intros; eauto; solve_by_inverts (n-1).
 
   Ltac si :=
+    try repeat destr;
     try solve_by_inverts 3; eauto.
-
 
   Set Implicit Arguments.
 
@@ -305,42 +314,68 @@ Qed.
                   queueStep_n_simpl n l1 l2 ->
                   queueStep l2 l3 -> queueStep_n_simpl (S n) l1 l3.
 
+
   Inductive queueStep_n_simpl' :
     nat -> list A * B -> list A * B -> Prop :=
   | QMSs_refl' : forall l, queueStep_n_simpl' 0 l l
   | QMSs_trans' : forall n l1 l2 l3,
                   queueStep l1 l2 ->
                   queueStep_n_simpl' n l2 l3 -> queueStep_n_simpl' (S n) l1 l3.
-  
+
+  Hint Constructors queueStep_n.
+  Hint Constructors queueStep_n_simpl.
+  Hint Constructors queueStep_n_simpl'.
   (*
       To work around this, we prove the following two lemmas
       regarding the base cases that can appear in induction
       on queueStep_n. These 'shortcut' any of the problematic
       chains mentioned above
   *)
+
+Ltac guess v H :=
+  repeat match type of H with
+           | forall x : ?T, _ =>
+             match type of T with
+               | Prop =>
+                 (let H' := fresh "H'" in
+                   assert (H' : T); [
+                     solve [ eauto 6 ]
+                     | specialize (H H'); clear H' ])
+                 || fail 1
+               | _ =>
+                 specialize (H v)
+                 || let x := fresh "x" in
+                   evar (x : T);
+                   let x' := eval unfold x in x in
+                     clear x; specialize (H x')
+             end
+         end.
+
+(** Version of [guess] that leaves the original [H] intact *)
+
   Lemma queueStep_n_0 :
     forall l1 l2 n, queueStep_n n l1 l2 -> n = 0 -> l1 = l2.
   Proof.
-    intros l1 l2 n H. induction H.
-    + intros. auto.
-    + intros. inversion H0.
-    + intros. apply plus_is_O in H1.
-      inversion H1. 
-      rewrite IHqueueStep_n1; auto.
+    intros.
+    induction H; si.
+    apply plus_is_O in H0; si.
+    guess H2 IHqueueStep_n2.
+    guess H1 IHqueueStep_n1.
+    si.
   Qed.
+  Hint Resolve queueStep_n_0.
 
   Lemma queueStep_n_1 :
     forall l1 l2 n, queueStep_n n l1 l2 -> n = 1 -> queueStep l1 l2.
   Proof.
-    intros l1 l2 n H. induction H.
-    + intros. inversion H.
-    + intros. auto.
-    + intros. apply Nat.eq_add_1 in H1. 
-      do 2 destruct H1; subst.
-      apply queueStep_n_0 in H0; auto.
-      simpl; subst. apply IHqueueStep_n1. auto.
-      apply queueStep_n_0 in H; auto.
-      simpl; subst. apply IHqueueStep_n2. auto.
+    intros l1 l2 n H;
+      induction H; intros; si.
+     apply Nat.eq_add_1 in H1.
+     do 2 destruct H1.
+     apply queueStep_n_0 in H0; auto.
+     simpl; subst. apply IHqueueStep_n1. auto.
+     apply queueStep_n_0 in H; auto.
+     simpl; subst. apply IHqueueStep_n2. auto.
   Qed.
 
   Lemma queueStep_n_swap_aux : 
@@ -348,13 +383,13 @@ Qed.
       queueStep_n_simpl n l1 l2 ->
       queueStep_n n l1 l2.
   Proof.
-    intros. dependent induction H; subst.
+    intros.
+    induction H; subst.
     constructor.
     replace (S n) with (n + 1).
     apply QMS_trans with (l2 := l2).
     auto. constructor. auto. omega.
   Qed.
-
 
   Lemma queueStep_n_swap :
     forall n l1 l2,
@@ -363,7 +398,7 @@ Qed.
   Proof.
     split.
     + apply queueStep_n_swap_aux.
-    + intros. dependent induction H.
+    + intros. induction H.
       - constructor.
       - econstructor. apply QMSs_refl. auto.
       - dependent induction m.
@@ -551,7 +586,7 @@ Qed.
     queueStep_n n l l' -> queueStep_n_simpl' n l l'.
   Proof.
     induction 1; try solve[constructor].
-    { apply QMSs_trans' with (l2:=l2); auto. constructor. }
+    { apply QMSs_trans' with (l2:=l2); auto.  }
     apply (queueStep_n_simpl'_trans IHqueueStep_n1 IHqueueStep_n2).
   Qed.    
 
@@ -561,7 +596,6 @@ Qed.
     induction 1; try solve[constructor].
     assert (H3: S n = 1 + n) by omega. rewrite H3.
     eapply QMS_trans; eauto.
-    constructor; auto.
   Qed.    
   
   Lemma queueStep_n_simpl'_swap n l l' :
@@ -607,6 +641,8 @@ Qed.
     inversion H10. subst. inversion H6. subst.
     auto. auto. auto.
   Qed. 
+  
+  Hint Resolve queueStep_n_ind_b.
 
  Lemma queueStep_n_length_app' :
     forall a1 a1' b1 b1',
@@ -616,27 +652,26 @@ Qed.
         fst p = a2 ++ a1'.
   Proof.
     intros.
+    destruct p.
     specialize (@queueStep_n_length_app a1 a1' b1 b1' H a2).
     intros.
-  Admitted.
+    inversion H; intros;
+    subst; eauto.
+  Qed.
 
   Lemma queueStep_n_exists :
     forall a, exists a', queueStep_n (length (fst a)) a a'.
   Proof.
-
-  Admitted.
-
+    Admitted.
 
   Lemma stepEq :
     forall p1 p2, queueStep p1 p2 -> queueMIS p1 = queueMIS p2.
   Proof.
-
   Admitted.
 
   Lemma stepNEq :
     forall n p1 p2, queueStep_n n p1 p2 -> queueMIS p1 = queueMIS p2.
   Proof.
-
   Admitted.
 
   Definition AasB : list A -> B :=
@@ -659,12 +694,72 @@ Qed.
         (snd p = nil) ->
         matchQandCand v p b.
 
+  Lemma nat_1 : forall n m,
+      S n = S m ->
+      n = m.
+  Proof.
+    intros.
+    omega.
+  Qed.
+
   Lemma list_sep : forall (T : Type) (l : list T) n m,
     length l = n + m ->
     exists l1 l2, length l1 = n /\ length l2 = m /\ l1++l2 = l.
   Proof.
-
-  Admitted.
+    induction l.
+    assert (@length T nil  = 0).
+    apply length_zero_iff_nil.
+    auto.
+    intros.
+    rewrite H0 in H.
+    apply plus_is_O in H.
+    intuition.
+    exists nil,nil.
+    intuition.
+    intros.
+    destruct n; simpl in *.
+    exists nil.
+    specialize (IHl 0 (m -1)).
+    simpl in IHl.
+    assert (length l = m - 1) by omega.
+    apply IHl in H0.
+    do 2 destruct H0.
+    intuition.
+    subst.
+    apply length_zero_iff_nil in H1.
+    subst.    
+    simpl.
+    exists (a :: x0).
+    eauto.
+    specialize (IHl n m).
+    apply nat_1 in H.
+    apply IHl in H.
+    do 2 destruct H.
+    intuition.
+    destruct m.
+    subst.
+    apply length_zero_iff_nil in H.
+    subst.
+    assert (length (x ++ nil) = length x + 0).
+    {
+      clear IHl.
+      induction x; auto.
+      simpl.
+      rewrite IHx.
+      auto.
+    }
+    apply IHl in H.
+    do 2 destruct H.
+    intuition; subst.
+    apply length_zero_iff_nil in H.
+    subst.
+    exists (a :: x).
+    exists nil.
+    intuition; eauto.
+    subst.
+    exists (a :: x), x0.
+    eauto.
+  Qed.
 
   Lemma mkCandidateSets_app :
     forall l1 l2 G,
@@ -951,20 +1046,12 @@ Qed.
     (* it's gonna be a wild ride in here *)
   Admitted.
 
-End RefineMIS.
-Recursive Extraction queueMIS.
-
-(*
-PMap_Extraction queueMIS.
-  PMap_Extraction
-
-  Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((0, nil)::nil, nil)) = PrintMIS G.
-  Proof.
-    (* it's gonna be a wild ride in here *)
-  Admitted.
-
- Definition stackMIS :=
+  Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
- *)
+
+End RefineMIS.
+
+
+
 
 
