@@ -5,7 +5,7 @@ Require Import Omega.
 Require Import Coq.Program.Wf.
 Require Import FunInd.
 Require Import Permutation.
-
+Require Import  Coq.Classes.RelationClasses.
 (*
     This file contains a number of combinators  for well-founded relations.
 
@@ -217,7 +217,6 @@ End WfIterStack.
         by natural numbers anyway.
 
 *)
-Require Import  Coq.Classes.RelationClasses.
 Section WFIterQueue.
   Variable A : Type.
   Variable Ra : A -> A -> Prop.
@@ -225,7 +224,7 @@ Section WFIterQueue.
 
   Variable Ra_wf : well_founded Ra.
   Variable Ra_trans : forall a1 a2 a3, Ra a1 a2 -> Ra a2 a3 -> Ra a1 a3.
-  Program Instance Ra_t : Transitive Ra.
+
   Variable Eqb_eq : equivalence _ Eqa.
 
   Definition Rord := optR _ (prodOrderLeft _ _ lt Ra).
@@ -237,6 +236,18 @@ Section WFIterQueue.
 
   Variable Ra_irref :
     forall a1 a2, Ra a1 a2 -> ~ Eqa a1 a2.
+
+  Program Instance Ra_t : Transitive Ra.
+  Program Instance Ra_strict : StrictOrder Ra.
+  Next Obligation.
+    unfold Irreflexive.
+    unfold Reflexive.
+    unfold complement.
+    intros.
+    apply Ra_irref in H.
+    apply H.
+    apply Eqb_eq.
+  Defined.
 
   Lemma Eqb_resp_RaL : forall a1 a2 a3,
     Eqa a1 a2 -> Ra a1 a3 -> Ra a2 a3.
@@ -284,6 +295,21 @@ Section WFIterQueue.
       symmetry.
       auto.
     Qed.
+
+
+    Lemma Ra_Asym:
+      forall a a',
+        Ra a a' ->  Ra a' a -> False.
+    Proof.
+      intros a a' H Hnot.
+      specialize (StrictOrder_Asymmetric Ra_strict).
+      intros.
+      unfold Asymmetric in H0.
+      exfalso; eauto.
+    Qed.
+    
+    Hint Resolve Ra_Asym.
+
 
   Fixpoint maxLocR (l : list A) : option (nat * A) :=
     match l with
@@ -399,57 +425,16 @@ Section WFIterQueue.
     maxLocR (a::l) = Some (S n, a') ->
       maxLocR l = Some (n, a').
   Proof.
-    intros.
-    inversion H.
-    destruct (maxLocR l).
-    destruct p.
-    +
-      destruct (R_total a a0).
-      -
+    intros;
+    inversion H;
+    destruct (maxLocR l); inversion H1;
+    destruct p;
+      destruct (R_total a a0);
+      inversion H1;
         destruct s;
-          inversion H1;
           subst;
           auto.
-      -
-        inversion H1.
-   +
-     inversion H1.
   Qed.
-
-  Require Import ProofIrrelevance.
-  Lemma maxLocR_weaken : forall a a' l,
-      MaxLocR (a :: a' :: l) (Some (0, a)) ->
-      MaxLocR (a :: l) (Some (0, a)).
-  Proof.
-    intros.
-    inversion H;
-    subst.
-    inversion H1.
-    inversion H2;
-    subst.
-    clear H2.
-    +
-      inversion H1.
-      subst.
-      constructor.
-      auto.
-    +
-      clear H7.
-      clear H3.
-      clear H.
-      clear H2.
-      apply Ra_trans with (a1 := a'1) in x; auto.
-      apply maxLocR_equiv in H5.
-      apply maxLocR_equiv.
-      admit.
-    +
-      clear H7.
-      clear H3.
-      destruct x0.
-      admit.
-      rewrite <- e in x.
-      admit.
-  Admitted.
 
   Lemma maxLocR_uniqR : forall l a a',
     maxLocR (a::l) = Some (0, a') -> a = a'.
@@ -477,55 +462,116 @@ Section WFIterQueue.
     inversion H2.
     clear H4.
     clear H.
-    +
-      destruct H0.
-      -
-        subst.
-        clear IHl.
-        inversion H3;
-          subst; auto.
-        clear H5.
-        clear H3.
+    destruct H0.
+    -
+      subst.
+      clear IHl.
+      inversion H3;
+        subst; auto.
+      clear H5.
+      clear H3.
+      destruct x0.
+      eapply Ra_trans; eauto.
+      rewrite e.
+      auto.
+    -
+      inversion H3; subst.
+      { inversion H1; eauto. }
+      { apply IHl with (a' := a') in H3; eauto. }
+      { clear H6.
         destruct x0.
-        eapply Ra_trans; eauto.
-        rewrite e.
+        apply maxLocR_equiv in H3.
+        apply maxLocR_max  with (a' := a') in H3.
+        destruct H3; eauto.
+        rewrite H0.
+        auto.        
+        intuition.
+        rewrite <- e in x.
+        apply maxLocR_equiv in H3.
+        apply maxLocR_max  with (a' := a') in H3.          
+        destruct H3; eauto.
+        rewrite <- e in H0.
+        transitivity a; eauto.
+        rewrite H0.
+        rewrite <- e.
         auto.
-      -
-        inversion H3; subst.
-        { inversion H1; eauto. }
-        { apply IHl with (a' := a') in H3; eauto. }
-        { clear H6.
-          destruct x0.
-          apply maxLocR_equiv in H3.
-          apply maxLocR_max  with (a' := a') in H3.
-          destruct H3; eauto.
-          rewrite H0.
-          auto.        
-          intuition.
-          rewrite <- e in x.
-          apply maxLocR_equiv in H3.
-          apply maxLocR_max  with (a' := a') in H3.          
-          destruct H3; eauto.
-          rewrite <- e in H0.
-          transitivity a; eauto.
-          rewrite H0.
-          rewrite <- e.
-          auto.
-          right; auto.
-        }
+        right; auto.
+      }
   Qed.
 
-  Lemma maxLocR_weak : forall l a l' n a0,
-      In a0 l ->
-      maxLocR (l ++ a :: l') = Some (n, a0) ->
-      maxLocR (l ++ l') = Some (n, a0).
+  Hint Resolve eqA_Reflexive.
+  Hint Resolve eqA_Symmetric.
+  Hint Resolve eqA_Transitive.
+
+  Lemma maxLocR_weaken : forall l a a' n,
+      maxLocR l = Some (n, a') ->
+      Ra a a' -> 
+      maxLocR (l ++ a :: nil) = Some (n, a').
   Proof.
-    induction l; intros.
-    simpl.
+    induction l.
+    + intros.
     inversion H.
-    destruct H.
+    + intros.
+      case_eq n.
+      intros; subst.
+      assert (a = a') by (apply maxLocR_uniqR in H; auto).
+    subst. specialize (maxLocR_hdR _ _ H).
+    intros. simpl. case_eq (maxLocR (l++a0::nil)).
+    intros. destruct p.
+    specialize (maxLocR_mem _ _ _ H2).
+    intros.
+    apply in_app_or in H3.
+    destruct H3.
+    apply H1 in H3.
+    destruct (R_total a' a); auto.
+    destruct s; eauto.
+    exfalso; eauto.
+    rewrite e in H3.
+    apply Ra_irref in H3.
+    exfalso; eauto.
+    {
+      inversion H3;
+      subst.
+      destruct (R_total a' a); auto.
+      destruct s; auto.
+      exfalso.
+      eauto.
+      rewrite e in H0.
+      exfalso.
+      apply Ra_irref in H0; eauto.
+      inversion H4.
+    }
+    auto.
+    intros.
+    specialize (maxLocR_mem _ _ _ H).
+    intros.
     subst.
-    Admitted.
+    destruct H2; eauto.
+    subst.
+    apply maxLocR_consR in H.
+    simpl.
+    erewrite IHl; eauto.
+    {
+      destruct (R_total a' a').
+      auto.
+      exfalso.
+      apply Ra_irref in r; eauto.
+    }
+    simpl.
+    specialize (maxLocR_consR _ _ _ _ H).
+    intros.
+    erewrite IHl; eauto.
+    destruct (R_total a a'); eauto.
+    apply maxLocR_max with (a' := a) in H; eauto.
+    destruct H; eauto.
+    exfalso.
+    eauto.
+    rewrite H in r.
+    exfalso.
+    apply Ra_irref in r; eauto.
+    left.
+    auto.
+  Qed.
 
   Lemma maxLocR_app : forall l l' a n,
     maxLocR l = Some (n, a) ->
@@ -536,9 +582,25 @@ Section WFIterQueue.
     generalize dependent a.
     generalize dependent n.
     generalize dependent l.
-    induction l'.
+    induction l';
+    intros; simpl.
+    subst.
+    rewrite app_nil_r; auto.
+    replace (l ++ a :: l') with ((l ++ a :: nil) ++ l'); simpl; eauto.
+    apply IHl'; eauto.
+    {
+      apply maxLocR_weaken; eauto.
+      apply H0.
+      left. auto.
+    }
     intros.
-Admitted.
+    apply H0.
+    right; auto.
+    replace (l ++ a :: nil) with (l ++ (a :: nil)); auto.
+    rewrite <- app_assoc.
+    simpl.
+    auto.
+  Qed.
 
   Definition maxLoC_ord := (wf_inverse_image  _ _ Rord maxLocR Rord_wf).
 
@@ -587,9 +649,9 @@ Admitted.
             assert (Ra a0 a \/ Eqa a0 a).
             apply maxLocR_max with (a' := a0) in H. auto. left. auto.
             destruct H6. eapply Eqb_resp_RaR; eauto.
-            eapply Eqb_resp_RaL; eauto. destruct Eqb_eq.
-            eapply equiv_refl. eapply Eqb_resp_RaR; eauto.
-            eapply Eqb_resp_RaR; eauto.
+            rewrite <- H4.
+            rewrite <- H6.
+            auto.
           }
         * intros. apply maxLocR_nil in H2. subst. rewrite app_nil_l in *.
           simpl in H. inversion H. 
