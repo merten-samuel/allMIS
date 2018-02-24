@@ -52,10 +52,7 @@ Section RefineMIS.
   Ltac destr :=
     match goal with
     | H : context[exists _, _]  |- _ => destruct H
-    |H : _ /\ _  |- _=> destruct H
-    |H : _ /\ _ /\ _  |- _=> destruct H
-    |H : _ /\ _ /\ _ /\ _  |- _=> destruct H
-    |H : _ /\ _ /\ _ /\ _ /\ _ |- _=> destruct H
+    |H : context[_ /\ _]  |- _=> destruct H
     | |- _ /\ _ => split
     end.
 
@@ -667,12 +664,42 @@ Ltac guess v H :=
   Lemma stepEq :
     forall p1 p2, queueStep p1 p2 -> queueMIS p1 = queueMIS p2.
   Proof.
-  Admitted.
+    intros.
+    inversion H.
+    subst.
+    unfold queueMIS.
+    unfold IterQueueWithAccum.
+    rewrite Fix_eq; auto.
+    intros.
+    destruct (mkSmallerQueue A B R Accum stepCandSet stepCandSet_desc x);
+    auto.
+    destruct s.
+    simpl in *.
+    auto.
+  Qed.
 
   Lemma stepNEq :
     forall n p1 p2, queueStep_n n p1 p2 -> queueMIS p1 = queueMIS p2.
   Proof.
+    intros.
+    inversion H.
+    subst.
+    unfold queueMIS.
+    unfold IterQueueWithAccum.
+    rewrite Fix_eq; auto.
+    intros.
+    destruct (mkSmallerQueue A B R Accum stepCandSet stepCandSet_desc x);
+    auto.
+    destruct s.
+    simpl in *.
+    auto.
+    subst.
+    apply stepEq; auto.
+    subst.
+    
+
   Admitted.
+
 
   Definition AasB : list A -> B :=
     fun l => map snd l.
@@ -813,6 +840,23 @@ Qed.
     apply Nat.eqb_neq. omega. 
     inversion H; subst. inversion H4; subst.
     simpl. unfold Accum. inversion H5. subst.    
+    unfold Accum in *.
+    simpl in *.
+    admit.
+    apply IHl; eauto.
+    subst.
+    rewrite queueStep_n_swap in *.
+    specialize (@queueStep_n_lt_l (S (length l)) (length l)).
+    intros.
+    assert (length l < S (length l)) by omega.
+    specialize (H8 (a::l,l0) p2).
+    apply H8 in H9; auto.
+    destruct H9.
+    clear H8.
+    admit.
+    intros.
+    apply H0.
+    right; auto.
   Admitted.
 
   Lemma stepQ_as_mkCandSets :
