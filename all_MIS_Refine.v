@@ -1114,8 +1114,33 @@ Qed.
       apply Permutation_cons_app. apply Permutation_refl.
       auto.
   Qed.
-End RefineMIS.
 
+  Lemma queueMIS_ultimate :
+    forall p p', queueMIS p = p' -> (fst p' = nil).
+  Proof.
+  Admitted.
+
+End RefineMIS.
+(*
+  Lemma queueMIS_penultimate : 
+    forall n G a p,
+      (n = lV G) ->
+      queueMIS G (a, nil) = p ->
+        exists a', queueBigStep G (a, nil) (a', nil) /\ p = (nil, AasB G a').
+  Proof.
+    intros n. induction n.
+    + intros. subst.
+    induction G using InducedGraph_ind.
+    intros. exists a. revert p H. induction a.
+    + intros. split. apply rt_refl.
+      unfold queueMIS in H. rewrite QP_nil in H. simpl. auto.
+    + intros. simpl in *.
+      unfold queueMIS in H; rewrite QP_cons in H;
+      fold queueMIS in H. 
+ constructor. assert (a = nil).
+
+ induction H.
+*)
   Lemma lGraph_vert_ind :
     forall P : lGraph -> Prop,
       P nil_lGraph ->
@@ -1146,115 +1171,97 @@ End RefineMIS.
     intros.
     destruct G. apply H1. apply H2.
   Qed.
-(*
-  Check queueStep. SearchAbout lGraph. Check LiftGraph.
 
-  Print PrintMIS. Print mkSetsPrintMIS.
-
- Print mkCandidateSets.
-Check stepQ_as_mkCandSets . Print matchQandCand.
-Lemma queueMIS_blhe :
-    forall G n, n < (lV G) ->
-      exists p2, queueBigStep G (((Ox G, nil)::nil, nil)) p2 /\
-                  matchQandCand G ( n) p2 (PrintMIS (LiftGraph n G)).
+  Lemma bleh :
+    forall G x y, Permutation x y ->
+      Permutation (mkCandidateSets G x) (mkCandidateSets G y).
   Proof.
-    induction G using lGraph_vert_str_ind.
-    - intros. simpl in H. omega.
-    - intros. subst.
-      unfold PrintMIS in *; simpl in *.
-      case_eq n0.
-      * intros. subst. exists ((Ox G, nil) :: nil, nil).
-        split. apply rt_refl. split. simpl. auto.
-        intros.  simpl in *. inversion H0; [|inversion H2].
-        destruct a. inversion H2. simpl. auto.
-        simpl. auto.
-      * simpl. intros. rewrite LiftGraph_red; try omega.
-        assert (lV (LiftGraph (S n) G) < lV G). simpl. omega.
-        assert (n < lV (LiftGraph (S n) G)). simpl. omega.
-        specialize (H (LiftGraph (S n) G) H2 n H3).
-        clear H2 H3. destruct H.
-        destruct H as [H4 H2].
-        rewrite LiftGraph_red in H2; try omega.
-  
+    intros G x y H.
+    revert G.
+    induction H using Permutation_ind. 
+    intros. apply Permutation_refl.
+    intros. simpl. destruct (lV G). auto.
+    destruct graphs_nondep.inEdgeDec.
+    destruct isMIS. destruct LFMIS_dec.
+    constructor. constructor. apply IHPermutation.
+    constructor. apply IHPermutation.
+    constructor. apply IHPermutation.
+    destruct graphs_nondep.vertexConnected.
+    destruct isMIS. destruct LFMIS_dec.
+    constructor. constructor. apply IHPermutation.
+    constructor. apply IHPermutation.
+    constructor. apply IHPermutation.
+    destruct independent_lGraph. constructor.
+    apply IHPermutation.
+    destruct isMIS. destruct LFMIS_dec.
+    constructor. constructor.
+    apply IHPermutation.
+    constructor.
+    apply IHPermutation.
+    constructor.
+    apply IHPermutation.
+    intros. simpl. destruct (lV G). 
+    apply Permutation_refl.
+    destruct graphs_nondep.inEdgeDec.
+    destruct isMIS. destruct LFMIS_dec.
+    destruct isMIS. destruct LFMIS_dec.
+    admit.
+    admit.
+    admit.
+    destruct isMIS. destruct LFMIS_dec.
+    admit. constructor. constructor.
+    destruct isMIS. destruct LFMIS_dec.
+    admit. constructor. constructor.
+Admitted.
 
-  Lemma queueMIS_blhe :
-    forall G n, n < (lV G) ->
-      exists p2, queueBigStep G (((Ox G, nil)::nil, nil)) p2 /\
-                  snd p2 = nil /\
-                  AasB G (fst p2) = PrintMIS (LiftGraph n G).
+  Lemma queueMIS_EQ_aux :
+    forall G (x : nat),
+    S x <> 0 ->
+    S x > 1 ->
+Permutation (snd (queueMIS (LiftGraph x G) ((Ox (LiftGraph x G), nil) :: nil, nil)))
+  (mkSetsPrintMIS (lV (LiftGraph x G)) (LiftGraph x G)) ->
+exists a' : list (iN (S (lV (LiftGraph (S x) G))) * list nat),
+  queueBigStep (LiftGraph (S x) G) ((Ox (LiftGraph (S x) G), nil) :: nil, nil)
+    (a', nil) /\
+  Permutation (AasB (LiftGraph (S x) G) a')
+    (mkCandidateSets (LiftGraph (S x) G)
+       (mkSetsPrintMIS (lV (LiftGraph x G)) (LiftGraph x G))) /\
+  (forall t : iN (S (lV (LiftGraph (S x) G))) * list nat,
+   In t a' -> iXToNat (LiftGraph (S x) G) (fst t) = S x).
   Proof.
-    induction G using lGraph_vert_str_ind.
-    - intros. simpl in H. omega.
-    - intros. subst.
-      unfold PrintMIS in *; simpl in *.
-      case_eq n0.
-      * intros. subst. exists ((Ox G, nil) :: nil, nil).
-        split. apply rt_refl. split. simpl. auto.
-        simpl. auto.
-      * simpl. intros. rewrite LiftGraph_red; try omega.
-        assert (lV (LiftGraph (S n) G) < lV G). simpl. omega.
-        assert (n < lV (LiftGraph (S n) G)). simpl. omega.
-        specialize (H (LiftGraph (S n) G) H2 n H3).
-        clear H2 H3. destruct H.
-        destruct H as [H4 [H2 H3]].
-        subst. rewrite LiftGraph_red in H3; try omega.
-        rewrite <- H3.
-        destruct x; simpl in *; subst.
+   simpl lV. simpl snd. intros.
+   exists
+    SearchAbout mkCandidateSets mkSetsPrintMIS.
 
-Check stepQ_as_mkCandSets .
-  assert (matchQandCand G (S v) p2 (mkCandidateSets (LiftGraph (S v) G) lG))
-        + admit.
-        + admit.
-        + admit.
-        simpl.
-        inv
-      
+ unfold mkSetsPrintMIS. revert G. induction n.
+    + intros. omega.
+    + intros. clear IHn. case_eq n; intros.
+      - subst. specialize (IHn G).
+      - intros. subst. clear IHx.
+        apply False_rec. 
+        unfold queueMIS in H1. rewrite QP_cons in H1.
+        simpl lV in H1.
+        unfold stepCandSet in H1.
+ simpl snd in H1.
+        rewrite <- QP_nil in H1.
+        simpl in H1.
+        eexists. repeat split.
 
-case_eq n; intros; subst. omega.
-      unfold PrintMIS. simpl.
-      unfold mkSetsPrintMIS.
-      case_eq n1.
-      * intros; subst. exists ((Ox G, nil) :: nil, nil).
-        split. apply rt_refl. split. simpl. auto.
-        simpl. auto.
-      * intros. unfold mkSetsPrintMIS.
-        rewrite LiftGraph_red; try omega. subst.
-        assert (lV (LiftGraph (S n) G) < lV G). { simpl. omega. }
-        specialize (H (LiftGraph (S n) G) H0).
-        assert 
- simpl in *.
-
-  subst. rewrite LiftGraph_red; try omega. SearchAbout LiftGraph lt. specialize H (G0)
-
-
-        unfold queueBigStep. constructor 1.
-        constructor 0. simpl.
-
- exists ((Ox G, nil)::nil, nil).
-        split. constructor 2. simpl. split. auto.
-        
-        auto. constructor. auto. split.
-
-re (queueMIS G (((Ox G, nil)::nil, nil))).
-        split.
-  
-      simpl in H. intros.
-      unfold PrintMIS.
-      eexists. split.
-      
- split.
-      simpl.  :
-    forall P : lGraph -> Prop,
-      P nil_lGraph ->
-      (forall n, (forall G, lV G < n -> P G) ->
-        forall G', lV G' = n -> P G') ->
-      forall G, P G.
-    
-*)
+        * apply rt_refl.
+        * admit.
+        * intros. destruct H2. Focus 2. inversion H2. subst; simpl. simpl. 
+        Focus 2. eapply H1.
+eauto.
+        unfold queueBigStep. Print clos_refl_trans.
+        exists (Ox (LiftGraph 1 G), nil).
+ simpl in H1.
+   induction G using InducedGraph_ind; intros.
+   + simpl. apply False_rec.  simpl in H1.
+  Admitted.      
 
   Lemma queueMIS_EQ_PrintMIS :
     forall G, lV G <> 0 -> Permutation (snd (queueMIS G ((Ox G, nil)::nil, nil))) (PrintMIS G).
-  Proof. SearchAbout lGraph.
+  Proof.
     induction G using InducedGraph_ind.
     + intros. simpl in H. omega.
     + subst. intros. simpl.
@@ -1272,7 +1279,7 @@ re (queueMIS G (((Ox G, nil)::nil, nil))).
         replace (LiftGraph 1 (LiftGraph 1 G)) with (LiftGraph 1 G).
          case_eq (graphs_nondep.inEdgeDec (flatten_EdgesGraph (LiftGraph 1 G)) (0, 0)).
         intros.
-        - admit.
+        - apply False_rec. generalize i. intros k. apply flatten_Edges_irref in k. omega.
         - intros. rewrite QP_cons. simpl.
           unfold Accum. simpl. rewrite QP_nil. simpl.
           auto.
@@ -1294,18 +1301,30 @@ re (queueMIS G (((Ox G, nil)::nil, nil))).
               (mkCandidateSets (LiftGraph (S x) G)
                 (mkSetsPrintMIS (lV (LiftGraph x G)) (LiftGraph x G))))
             /\ forall t, In t a' -> (iXToNat _ (fst t) = (S x))).
-        admit.
+          simpl in H, H0. 
+        apply queueMIS_EQ_aux; auto.
         destruct H2. destruct H2. destruct H3.
         apply Permutation_trans with (l' := (AasB (LiftGraph (S x) G) x0)); try auto.
         erewrite stepBigEq; try eauto.
         assert (exists x', queueStep_n (LiftGraph (S x) G) (length x0) (x0, nil) x').
-        { admit (* actually done *). }
+        {
+          specialize (queueStep_n_exists (LiftGraph (S x) G) (x0, nil)). intros.
+          destruct H5. exists x1. simpl in H5. apply H5.
+        }
         destruct H5.
         specialize (@stepQ_as_mkCandSets_terminal
-                    (LiftGraph (S x) G) (length x0)).
-        intros. (* finish specialization *)
-
-Admitted.
+                    (LiftGraph (S x) G) (length x0) _ _ H5).
+        simpl. intros. specialize (H6 eq_refl H4).
+        rewrite app_nil_r in H6. inversion H6. simpl. 
+        apply Permutation_trans with (l' := (AasB (LiftGraph (S x) G) x0)); try auto.
+        apply Permutation_trans with (l' := snd (queueMIS (LiftGraph (S x) G) x1)).
+        assert ((snd (queueMIS (LiftGraph (S x) G) (x0, nil))) = snd (queueMIS (LiftGraph (S x) G) x1)).
+        f_equal. eapply stepNEq. eauto. rewrite <- H9. apply Permutation_refl.
+        assert ((queueMIS (LiftGraph (S x) G) x1) = x1).
+        destruct x1. simpl in H7. rewrite H7. unfold queueMIS. apply QP_nil.
+        rewrite H9. auto.
+    - simpl. rewrite LiftGraph_red. auto. omega.
+   Qed.
 
   Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
