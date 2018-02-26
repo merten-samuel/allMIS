@@ -8,6 +8,8 @@ Require Import List.
 Require Import Omega.
 Require Import index.
 Require Import Program.Equality.
+Require Import Permutation.
+
 (* Require Import Fin. *)
 Definition iN (N : nat) :=  Ix N.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -291,6 +293,8 @@ Qed.
 
   Definition queueStep := QueueStepR _ _ Accum stepCandSet.
 
+    
+  
   (* This form is nice for working with composition,
       but the form of the transitivity means that
       you can build a chain of arbitrary length
@@ -303,6 +307,8 @@ Qed.
   | QMS_trans : forall n m l1 l2 l3,
                   queueStep_n n l1 l2 ->
                   queueStep_n m l2 l3 -> queueStep_n (n + m) l1 l3.
+
+  Definition queueBigStep : list A * B -> list A * B -> Prop := clos_refl_trans _ queueStep.
 
   Inductive queueStep_n_simpl :
     nat -> list A * B -> list A * B -> Prop :=
@@ -656,10 +662,42 @@ Ltac guess v H :=
     subst; eauto.
   Qed.
 
+
+  Lemma length_ind :
+    forall (T : Type) (P : list T -> Prop),
+      (P nil) ->
+      (forall n,
+        (forall (l : list T), (length l = n) -> P l) ->
+        (forall (l' : list T), (length l' = S n) -> P l')) ->
+      forall l, P l.
+  Proof.
+    intros. remember (length l) as x. generalize dependent l.
+    dependent induction x. intros. symmetry in Heqx.
+    apply length_zero_iff_nil in Heqx. subst. auto.
+    intros. destruct l. inversion Heqx. 
+    simpl in Heqx. inversion Heqx. 
+    apply (H0 x). intros. apply IHx. auto. auto.
+  Qed.
+
   Lemma queueStep_n_exists :
     forall a, exists a', queueStep_n (length (fst a)) a a'.
   Proof.
-    Admitted.
+    destruct a. revert l0.
+    induction l using length_ind.
+    intros. exists (nil, l0). simpl.
+    constructor.
+    case_eq l; intros. rewrite H1 in H0. simpl in H0. omega.
+    rewrite H1 in H0. inversion H0.
+    specialize (H l0 H3 (Accum p l1)).
+    destruct H. simpl in H.
+    destruct x.
+    exists (stepCandSet p ++ l2, l3). simpl. 
+    rewrite queueStep_n_simpl'_swap.
+    apply QMSs_trans' with (l2 := (l0 ++ stepCandSet p, Accum p l1)).
+    econstructor. reflexivity. reflexivity.
+    rewrite <- queueStep_n_simpl'_swap.
+    apply queueStep_n_length_app. auto.
+  Qed.
 
   Lemma stepEq :
     forall p1 p2, queueStep p1 p2 -> queueMIS p1 = queueMIS p2.
@@ -682,24 +720,35 @@ Ltac guess v H :=
     forall n p1 p2, queueStep_n n p1 p2 -> queueMIS p1 = queueMIS p2.
   Proof.
     intros.
-    inversion H.
-    subst.
-    unfold queueMIS.
+    induction H.
+    auto.
+    inversion H. subst.
+    unfold queueMIS.  
     unfold IterQueueWithAccum.
     rewrite Fix_eq; auto.
     intros.
     destruct (mkSmallerQueue A B R Accum stepCandSet stepCandSet_desc x);
     auto.
     destruct s.
-    simpl in *.
     auto.
-    subst.
-    apply stepEq; auto.
-    subst.
-    
+    rewrite IHqueueStep_n1 . auto.
+  Qed.
 
-  Admitted.
-
+  Lemma stepBigEq :
+    forall p1 p2, queueBigStep p1 p2 -> queueMIS p1 = queueMIS p2.
+  Proof.
+    intros. induction H; try auto.
+    inversion H. subst.
+    unfold queueMIS.  
+    unfold IterQueueWithAccum.
+    rewrite Fix_eq; auto.
+    intros.
+    destruct (mkSmallerQueue A B R Accum stepCandSet stepCandSet_desc x);
+    auto.
+    destruct s.
+    auto.
+    rewrite IHclos_refl_trans1. auto.
+  Qed.
 
   Definition AasB : list A -> B :=
     fun l => map snd l.
@@ -820,44 +869,42 @@ Ltac guess v H :=
       rewrite H0. auto.
 Qed.
 
+
+
   Lemma queueStep_n_ltV :
     forall p1 p2,
       queueStep_n (length (fst p1)) p1 p2 ->
       (forall a, In a (fst p1) -> (iXToNat (fst a)) < |V|) ->       
       snd p1 = snd p2.
   Proof.
-    intros p1. destruct p1.
-    generalize dependent l0.
-    simpl. induction l.
-    intros. simpl in *.
-    apply queueStep_n_0 in H; auto.
-    inversion H; subst. auto.
-    intros. simpl in H.
-    rewrite <- queueStep_n_swap in H.
-    assert (iXToNat (fst a) < |V|). apply H0.
-    left. auto.
-    assert (iXToNat (fst a) =? |V| = false).
-    apply Nat.eqb_neq. omega. 
-    inversion H; subst. inversion H4; subst.
-    simpl. unfold Accum. inversion H5. subst.    
-    unfold Accum in *.
-    simpl in *.
-    admit.
-    apply IHl; eauto.
-    subst.
-    rewrite queueStep_n_swap in *.
-    specialize (@queueStep_n_lt_l (S (length l)) (length l)).
-    intros.
-    assert (length l < S (length l)) by omega.
-    specialize (H8 (a::l,l0) p2).
-    apply H8 in H9; auto.
-    destruct H9.
-    clear H8.
-    admit.
-    intros.
-    apply H0.
-    right; auto.
-  Admitted.
+    destruct p1. generalize dependent l0.
+    induction l using length_ind.
+    - intros. simpl in *. subst. simpl in *.
+      apply queueStep_n_0 in H. subst. simpl. split; auto. auto.
+    - intros. subst. case_eq l; intros; subst;
+      inversion H0; subst. simpl fst in *.
+      simpl snd in *.
+      replace (length (p::l1)) with (1 + length l1) in H1.
+      apply queueStep_n_inv in H1.
+      destruct H1 as [p_int [H3 H4]].
+      apply queueStep_n_1 in H3.
+      inversion H3; subst. inversion H1; subst.
+      specialize (queueStep_n_exists (l, Accum a b)).
+      intros. destruct H5, x. simpl in H5.
+      specialize (H l eq_refl (Accum a b) (l0, l1) H5).
+      assert (Accum a b = snd (l0, l1)). apply H.
+      intros. apply H2. right. auto.
+      assert (queueStep_n (length l) (l ++ stepCandSet a, Accum a b) (stepCandSet a ++ l0, l1)).
+      specialize (queueStep_n_length_app H5).
+      intros. apply H7.
+      assert ((stepCandSet a ++ l0, l1) = p2).
+      eapply queueStep_n_uniq; eauto. subst. simpl in *.
+      rewrite <- H6. unfold Accum.
+      assert (iXToNat (fst a) =? |V| = false).
+      assert (iXToNat (fst a) < |V|).
+      apply H2. left. auto.
+      apply Nat.eqb_neq. omega. rewrite H8. auto. auto.
+  Qed.
 
   Lemma stepQ_as_mkCandSets :
     forall n (p1 p2 : list A * B),
@@ -1025,24 +1072,7 @@ Qed.
       simpl. omega.
 Qed.
 
-  Lemma length_ind :
-    forall (T : Type) (P : list T -> Prop),
-      (P nil) ->
-      (forall n,
-        (forall (l : list T), (length l = n) -> P l) ->
-        (forall (l' : list T), (length l' = S n) -> P l')) ->
-      forall l, P l.
-  Proof.
-    intros. remember (length l) as x. generalize dependent l.
-    dependent induction x. intros. symmetry in Heqx.
-    apply length_zero_iff_nil in Heqx. subst. auto.
-    intros. destruct l. inversion Heqx. 
-    simpl in Heqx. inversion Heqx. 
-    apply (H0 x). intros. apply IHx. auto. auto.
-  Qed.
 
-    Require Import Permutation.
-    Check Permutation.
   Lemma stepQ_as_mkCandSets_terminal :
     forall n (p1 p2 : list A * B),
       queueStep_n n p1 p2 -> 
@@ -1084,11 +1114,198 @@ Qed.
       apply Permutation_cons_app. apply Permutation_refl.
       auto.
   Qed.
+End RefineMIS.
 
-  Lemma queueMIS_EQ_PrintMIS : snd (queueMIS ((Ox, nil)::nil, nil)) = PrintMIS G.
+  Lemma lGraph_vert_ind :
+    forall P : lGraph -> Prop,
+      P nil_lGraph ->
+      (forall n, (forall G, lV G = n -> P G) ->
+        forall G', lV G' = S n -> P G') ->
+      forall G, P G.
   Proof.
-    (* it's gonna be a wild ride in here *)
-  Admitted.
+    intros.
+    destruct G.
+    dependent induction lV.
+    + rewrite <- fix_LiftGraph. simpl lV.
+      rewrite least_LiftGraph. auto.
+    + apply (H0 lV). intros.
+      destruct G. simpl in H1. subst. apply IHlV. auto.
+  Qed.
+
+  Lemma lGraph_vert_str_ind :
+    forall P : lGraph -> Prop,
+      P nil_lGraph ->
+      (forall n, (forall G, lV G < n -> P G) ->
+        forall G', lV G' = n -> P G') ->
+      forall G, P G.
+  Proof.
+    intros.
+    destruct G.
+    dependent induction lV using (well_founded_ind lt_wf).
+    apply (H0 lV); try auto.
+    intros.
+    destruct G. apply H1. apply H2.
+  Qed.
+(*
+  Check queueStep. SearchAbout lGraph. Check LiftGraph.
+
+  Print PrintMIS. Print mkSetsPrintMIS.
+
+ Print mkCandidateSets.
+Check stepQ_as_mkCandSets . Print matchQandCand.
+Lemma queueMIS_blhe :
+    forall G n, n < (lV G) ->
+      exists p2, queueBigStep G (((Ox G, nil)::nil, nil)) p2 /\
+                  matchQandCand G ( n) p2 (PrintMIS (LiftGraph n G)).
+  Proof.
+    induction G using lGraph_vert_str_ind.
+    - intros. simpl in H. omega.
+    - intros. subst.
+      unfold PrintMIS in *; simpl in *.
+      case_eq n0.
+      * intros. subst. exists ((Ox G, nil) :: nil, nil).
+        split. apply rt_refl. split. simpl. auto.
+        intros.  simpl in *. inversion H0; [|inversion H2].
+        destruct a. inversion H2. simpl. auto.
+        simpl. auto.
+      * simpl. intros. rewrite LiftGraph_red; try omega.
+        assert (lV (LiftGraph (S n) G) < lV G). simpl. omega.
+        assert (n < lV (LiftGraph (S n) G)). simpl. omega.
+        specialize (H (LiftGraph (S n) G) H2 n H3).
+        clear H2 H3. destruct H.
+        destruct H as [H4 H2].
+        rewrite LiftGraph_red in H2; try omega.
+  
+
+  Lemma queueMIS_blhe :
+    forall G n, n < (lV G) ->
+      exists p2, queueBigStep G (((Ox G, nil)::nil, nil)) p2 /\
+                  snd p2 = nil /\
+                  AasB G (fst p2) = PrintMIS (LiftGraph n G).
+  Proof.
+    induction G using lGraph_vert_str_ind.
+    - intros. simpl in H. omega.
+    - intros. subst.
+      unfold PrintMIS in *; simpl in *.
+      case_eq n0.
+      * intros. subst. exists ((Ox G, nil) :: nil, nil).
+        split. apply rt_refl. split. simpl. auto.
+        simpl. auto.
+      * simpl. intros. rewrite LiftGraph_red; try omega.
+        assert (lV (LiftGraph (S n) G) < lV G). simpl. omega.
+        assert (n < lV (LiftGraph (S n) G)). simpl. omega.
+        specialize (H (LiftGraph (S n) G) H2 n H3).
+        clear H2 H3. destruct H.
+        destruct H as [H4 [H2 H3]].
+        subst. rewrite LiftGraph_red in H3; try omega.
+        rewrite <- H3.
+        destruct x; simpl in *; subst.
+
+Check stepQ_as_mkCandSets .
+  assert (matchQandCand G (S v) p2 (mkCandidateSets (LiftGraph (S v) G) lG))
+        + admit.
+        + admit.
+        + admit.
+        simpl.
+        inv
+      
+
+case_eq n; intros; subst. omega.
+      unfold PrintMIS. simpl.
+      unfold mkSetsPrintMIS.
+      case_eq n1.
+      * intros; subst. exists ((Ox G, nil) :: nil, nil).
+        split. apply rt_refl. split. simpl. auto.
+        simpl. auto.
+      * intros. unfold mkSetsPrintMIS.
+        rewrite LiftGraph_red; try omega. subst.
+        assert (lV (LiftGraph (S n) G) < lV G). { simpl. omega. }
+        specialize (H (LiftGraph (S n) G) H0).
+        assert 
+ simpl in *.
+
+  subst. rewrite LiftGraph_red; try omega. SearchAbout LiftGraph lt. specialize H (G0)
+
+
+        unfold queueBigStep. constructor 1.
+        constructor 0. simpl.
+
+ exists ((Ox G, nil)::nil, nil).
+        split. constructor 2. simpl. split. auto.
+        
+        auto. constructor. auto. split.
+
+re (queueMIS G (((Ox G, nil)::nil, nil))).
+        split.
+  
+      simpl in H. intros.
+      unfold PrintMIS.
+      eexists. split.
+      
+ split.
+      simpl.  :
+    forall P : lGraph -> Prop,
+      P nil_lGraph ->
+      (forall n, (forall G, lV G < n -> P G) ->
+        forall G', lV G' = n -> P G') ->
+      forall G, P G.
+    
+*)
+
+  Lemma queueMIS_EQ_PrintMIS :
+    forall G, lV G <> 0 -> Permutation (snd (queueMIS G ((Ox G, nil)::nil, nil))) (PrintMIS G).
+  Proof. SearchAbout lGraph.
+    induction G using InducedGraph_ind.
+    + intros. simpl in H. omega.
+    + subst. intros. simpl.
+      generalize dependent G. intros G.
+      intros.
+      assert (lV (LiftGraph (S x) G) = 1 \/ lV  (LiftGraph (S x) G) > 1).
+      simpl. omega.
+      destruct H0.
+      { 
+        inversion H0. subst.
+        assert ((snd (queueMIS (LiftGraph 1 G) ((Ox (LiftGraph 1 G), nil) :: nil, nil))) =
+                (PrintMIS (LiftGraph 1 G))).
+        unfold queueMIS, PrintMIS, mkSetsPrintMIS. rewrite QP_cons.
+        simpl.
+        replace (LiftGraph 1 (LiftGraph 1 G)) with (LiftGraph 1 G).
+         case_eq (graphs_nondep.inEdgeDec (flatten_EdgesGraph (LiftGraph 1 G)) (0, 0)).
+        intros.
+        - admit.
+        - intros. rewrite QP_cons. simpl.
+          unfold Accum. simpl. rewrite QP_nil. simpl.
+          auto.
+        - rewrite <- fix_LiftGraph at 1. simpl. auto.
+        - rewrite <- H1. apply Permutation_refl.
+      }
+      assert (lV (LiftGraph x G) <> 0). simpl in *. omega.
+      apply IHG in H1. clear IHG.
+      unfold PrintMIS in *.
+      replace (mkSetsPrintMIS (lV (LiftGraph (S x) G)) (LiftGraph (S x) G)) with
+              (mkCandidateSets (LiftGraph (S x) G) ((mkSetsPrintMIS (lV (LiftGraph x G)) (LiftGraph x G)))).
+      -  assert
+          (exists a',
+             (queueBigStep (LiftGraph (S x) G))
+              ((Ox (LiftGraph (S x) G), nil) :: nil, nil) (a', nil)
+             /\
+            (Permutation
+              (AasB (LiftGraph (S x) G) a')
+              (mkCandidateSets (LiftGraph (S x) G)
+                (mkSetsPrintMIS (lV (LiftGraph x G)) (LiftGraph x G))))
+            /\ forall t, In t a' -> (iXToNat _ (fst t) = (S x))).
+        admit.
+        destruct H2. destruct H2. destruct H3.
+        apply Permutation_trans with (l' := (AasB (LiftGraph (S x) G) x0)); try auto.
+        erewrite stepBigEq; try eauto.
+        assert (exists x', queueStep_n (LiftGraph (S x) G) (length x0) (x0, nil) x').
+        { admit (* actually done *). }
+        destruct H5.
+        specialize (@stepQ_as_mkCandSets_terminal
+                    (LiftGraph (S x) G) (length x0)).
+        intros. (* finish specialization *)
+
+Admitted.
 
   Definition stackMIS :=
     IterStackWithAccum A B R R_wf Accum stepCandSet stepCandSet_desc.
