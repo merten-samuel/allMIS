@@ -325,6 +325,13 @@ Qed.
                   queueStep l1 l2 ->
                   queueStep_n_simpl' n l2 l3 -> queueStep_n_simpl' (S n) l1 l3.
 
+  Lemma queueBigStep_as_n : forall l1 l2 n,
+    queueStep_n n l1 l2 -> queueBigStep l1 l2.
+  Proof.
+    intros.
+    admit.
+  Admitted.      
+
   Hint Constructors queueStep_n.
   Hint Constructors queueStep_n_simpl.
   Hint Constructors queueStep_n_simpl'.
@@ -1115,32 +1122,9 @@ Qed.
       auto.
   Qed.
 
-  Lemma queueMIS_ultimate :
-    forall p p', queueMIS p = p' -> (fst p' = nil).
-  Proof.
-  Admitted.
 
 End RefineMIS.
-(*
-  Lemma queueMIS_penultimate : 
-    forall n G a p,
-      (n = lV G) ->
-      queueMIS G (a, nil) = p ->
-        exists a', queueBigStep G (a, nil) (a', nil) /\ p = (nil, AasB G a').
-  Proof.
-    intros n. induction n.
-    + intros. subst.
-    induction G using InducedGraph_ind.
-    intros. exists a. revert p H. induction a.
-    + intros. split. apply rt_refl.
-      unfold queueMIS in H. rewrite QP_nil in H. simpl. auto.
-    + intros. simpl in *.
-      unfold queueMIS in H; rewrite QP_cons in H;
-      fold queueMIS in H. 
- constructor. assert (a = nil).
 
- induction H.
-*)
   Lemma lGraph_vert_ind :
     forall P : lGraph -> Prop,
       P nil_lGraph ->
@@ -1229,42 +1213,136 @@ exists a' : list (iN (S (lV (LiftGraph (S x) G))) * list nat),
   (forall t : iN (S (lV (LiftGraph (S x) G))) * list nat,
    In t a' -> iXToNat (LiftGraph (S x) G) (fst t) = S x).
   Proof.
-   simpl lV. simpl snd. intros.
-   exists
-    SearchAbout mkCandidateSets mkSetsPrintMIS.
+    intros G x. revert G.
+    induction x. intros. omega.
+    case_eq x; intros. clear IHx.
+    - admit. 
+    - subst. assert (S (S n) <> 0). omega.
+      assert (S (S n) > 1). omega.
+      specialize (IHx G H H3).
+      simpl lV in *.
+      eexists. repeat split.
+      
+  Admitted. 
 
- unfold mkSetsPrintMIS. revert G. induction n.
-    + intros. omega.
-    + intros. clear IHn. case_eq n; intros.
-      - subst. specialize (IHn G).
-      - intros. subst. clear IHx.
-        apply False_rec. 
-        unfold queueMIS in H1. rewrite QP_cons in H1.
-        simpl lV in H1.
-        unfold stepCandSet in H1.
- simpl snd in H1.
-        rewrite <- QP_nil in H1.
-        simpl in H1.
-        eexists. repeat split.
 
-        * apply rt_refl.
-        * admit.
-        * intros. destruct H2. Focus 2. inversion H2. subst; simpl. simpl. 
-        Focus 2. eapply H1.
-eauto.
-        unfold queueBigStep. Print clos_refl_trans.
-        exists (Ox (LiftGraph 1 G), nil).
- simpl in H1.
-   induction G using InducedGraph_ind; intros.
-   + simpl. apply False_rec.  simpl in H1.
-  Admitted.      
+  Record queueMIS_state : Type :=
+    mkState {
+      Gam : lGraph;
+      state : list (iN (S (lV Gam)) * list nat) * list (list nat)
+    }.
+
+  Inductive queueMIS_match_subgraph : lGraph -> queueMIS_state -> queueMIS_state -> Prop :=
+  | mkMatchq : forall G (s1 s2 : queueMIS_state ),
+      (Gam s1 = LiftGraph (S (lV (Gam s2))) G) ->
+      snd (state s1) = snd (state s2) ->
+      AasB (Gam s1) (fst (state s1)) = AasB (Gam s2) (fst (state s2)) ->
+      queueMIS_match_subgraph G s1 s2.
+
+  Inductive queueMIS_state_step : nat -> queueMIS_state -> queueMIS_state -> Prop :=
+  | mk_queueMIS_state_step :
+      forall n G s1 s2,
+        queueStep_n G n s1 s2 ->
+        queueMIS_state_step n
+          (mkState G s1) (mkState G s2).
+
+  Inductive ValidState : queueMIS_state -> Prop :=
+  | mkQueueNoAccum :
+      forall s x,
+        In x (fst (state s)) ->
+        iXToNat _ (fst x) < (lV (Gam s)) -> (snd (state s)) = nil ->
+          ValidState s.
+
+  Lemma SimRel :
+    forall n G s1 s2 s1' s2',
+      queueMIS_state_step n s1 s1' ->
+      queueMIS_match_subgraph G s1 s2 -> 
+      queueMIS_state_step n s2 s2' ->
+      ValidState s1 -> ValidState s2 ->
+      queueMIS_match_subgraph G s1' s2'.
+  Proof.
+    intros n.
+    induction n.
+    intros. inversion H0; subst.
+    inversion H; subst.
+    inversion H1; subst.
+    simpl in *. apply queueStep_n_0 in H7.
+    apply queueStep_n_0 in H8. subst.
+    constructor; auto. auto. auto.
+    intros.
+  Admitted.                  
+
+
+  Lemma queueMIS_penultimatie : 
+    forall n G, n = (lV G) -> (n <> 0) -> exists a,
+      queueBigStep G (((Ox G, nil)::nil, nil)) (a, nil) /\
+      forall x, In x a -> iXToNat _ (fst x) = (lV G).
+  Proof.
+    intros n. induction n.
+    intros. omega.
+    case_eq n; intros; subst.
+    clear IHn. eexists.
+    split.
+    eapply queueBigStep_as_n.
+    eapply QMS_step.
+    econstructor. reflexivity.
+    unfold Accum. simpl iXToNat.
+    assert (0 =? lV G = false).
+    admit.
+    admit.
+    admit.
+    specialize (IHn (LiftGraph (S n0) G)).
+    simpl in IHn.
+    specialize (IHn eq_refl).
+    assert (S n0 <> 0). omega.
+    apply IHn in H. clear IHn.
+    destruct H. inversion H.
+      
+
+  Lemma blhe :
+    forall G n a_n a_sn b,
+      let Gn := LiftGraph n G in
+      let Gs := LiftGraph (S n) G in
+      (AasB Gn a_n = (AasB Gs a_sn)) ->
+      queueMIS G 
+      exists k, Permutation 
+
+
+  Lemma bleh' :
+    forall m G n a_n a_sn b,
+      let Gn := (LiftGraph n G) in
+      let Gs := (LiftGraph (S n) G) in
+      m < n ->
+      (AasB Gn a_n = (AasB Gs a_sn)) ->
+      (forall x, In x a_n -> iXToNat _ (fst x) < m) ->
+      
+ ->
+      queueStep_n (liftGraph x G) (, nil)) =
+
 
   Lemma queueMIS_EQ_PrintMIS :
-    forall G, lV G <> 0 -> Permutation (snd (queueMIS G ((Ox G, nil)::nil, nil))) (PrintMIS G).
+    forall n G, (lV G = n) -> lV G <> 0 -> Permutation (snd (queueMIS G ((Ox G, nil)::nil, nil))) (PrintMIS G).
   Proof.
-    induction G using InducedGraph_ind.
-    + intros. simpl in H. omega.
-    + subst. intros. simpl.
+    intros n.
+    induction n. intros. omega.
+    case_eq n.
+    + intros. subst.
+      assert (PrintMIS G = ((0::nil)::nil)).
+      unfold PrintMIS. rewrite H0. simpl.
+      rewrite H0. destruct graphs_nondep.inEdgeDec.
+      admit. (* <- contradiction over here *) constructor.
+      rewrite H.  admit.
+    +  intros; subst.
+
+      
+      assert (queueStep_n G (length Ox G, 
+ simpl.
+      
+ subst.
+
+ compute. simpl. admit.
+    + 
+ simpl.
       generalize dependent G. intros G.
       intros.
       assert (lV (LiftGraph (S x) G) = 1 \/ lV  (LiftGraph (S x) G) > 1).
