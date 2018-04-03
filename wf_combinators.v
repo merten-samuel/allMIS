@@ -756,6 +756,7 @@ Section AccQueue.
   Definition IterQueueR : (list A * B) -> (list A * B) -> Prop :=
     @LeftProdRel (list A) B (queueR A R).
 
+
   Lemma IterQueueR_wf : well_founded IterQueueR.
   Proof.
     apply LeftProdRel_wf. 
@@ -783,6 +784,65 @@ Section AccQueue.
                 | inl _ => p
                 | inr (exist _ x pf) => IterQueueWithAccum x pf
                 end)).
+
+
+  Variable P: list A * B -> Prop.
+  Variable Q: list A * B -> Prop.
+
+  Hypothesis step_prop :
+     forall a : list A * B, P a ->
+        match mkSmallerQueue a
+        with 
+        | inr a' => P (proj1_sig a')
+        | inl b => Q (( proj1_sig (sig_of_sig2 b)))
+        end.
+
+  Notation indQueueR := (queueR_wf A R Eqa R_wf R_trans Eqa_eq R_total R_irref).
+
+  Require Import CpdtTactics.
+  Require Import tactics.
+
+  Lemma IterQueueWithAccum_nil_l :
+    forall b, IterQueueWithAccum (nil,b) = (nil,b).
+  Proof.
+    intros.
+    unfold IterQueueWithAccum.
+    rewrite Init.Wf.Fix_eq;
+      [ | intros; destruct mkSmallerQueue; destruct s]; auto.
+  Qed.
+  Hint Resolve IterQueueWithAccum_nil_l.
+
+  Lemma iterate_prop:
+    forall a, P a -> Q (IterQueueWithAccum a).
+  Proof.
+    intros a.
+    induction a using (well_founded_induction IterQueueR_wf).
+    unfold IterQueueWithAccum.
+    rewrite Init.Wf.Fix_eq.
+    destruct (mkSmallerQueue a) as [[b U] | [a' U]] eqn:H1.
+    +
+      subst.
+      destruct b.
+      simpl in *.
+      subst.
+      intros.
+      apply step_prop in H0.
+      simpl in H0.
+      auto.
+    +
+      intros.
+      apply H.
+      auto.
+      apply step_prop in H0.
+      rewrite H1 in H0.
+      simpl in H0.
+      auto.
+    +
+      intros.
+      destruct mkSmallerQueue; auto.
+      destruct s.
+      auto.
+  Qed.
 
 End AccQueue.
 
@@ -898,6 +958,10 @@ Notation indQueueR := (queueR_wf A R Eqa R_wf R_trans Eqa_eq R_total R_irref).
       constructor. auto. apply Accum_resp. auto.
   Qed. 
 
+
+
+
+
   Lemma Accum_SP_comm :
     forall l a b, Peq (Accum a (snd (StackProg (l, b))))
                       (snd (StackProg (l, (Accum a b)))).
@@ -971,7 +1035,6 @@ Notation indQueueR := (queueR_wf A R Eqa R_wf R_trans Eqa_eq R_total R_irref).
   | SStep : forall p1 p2 a l b,
               p1 = (a::l, b) ->
               p2 = (f a ++ l, Accum a b) -> StackStepR p1 p2.
-
 
   Definition QueueBigStepR := clos_refl_trans  _ QueueStepR.
   Definition StackBigStepR := clos_refl_trans  _ StackStepR.
