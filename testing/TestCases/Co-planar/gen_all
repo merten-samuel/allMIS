@@ -1,0 +1,6 @@
+#!/bin/sh
+for i in *.graph
+do
+    echo $i
+    time ./all_mis_it <$i >$i.out
+done
