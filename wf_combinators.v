@@ -799,9 +799,6 @@ Section AccQueue.
 
   Notation indQueueR := (queueR_wf A R Eqa R_wf R_trans Eqa_eq R_total R_irref).
 
-  Require Import CpdtTactics.
-  Require Import tactics.
-
   Lemma IterQueueWithAccum_nil_l :
     forall b, IterQueueWithAccum (nil,b) = (nil,b).
   Proof.
