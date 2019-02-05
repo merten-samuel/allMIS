@@ -1055,6 +1055,7 @@ Proof.
   inversion H5.
 Qed.
 
+(* For graphs G, if G has one vertex then G has one MIS (length l = 1). *)
 Lemma MIS_bounds_1_verts :
   forall G (l : list (list T)) t,
     MIS_set_gGraph G l -> 
@@ -1075,6 +1076,8 @@ Proof.
 *)
 Admitted.
 
+(* For graphs G with two vertices, then for all MISs l' of G, 
+   l' = [t1] \/ l' = [t2] \/ l' = [t1:t2]. *)
 Lemma MIS_Bounds_2_verts_aux1 : 
   forall G (l : list (list T)) l' t1 t2,
     MIS_set_gGraph G l -> 
@@ -1092,14 +1095,58 @@ Proof.
   constructor. intros.
 Admitted.
 
+Lemma equivlistA_length A (l1 l2: list (list A)):
+  NoDupA (equivlistA eq) l1 ->
+  NoDupA (equivlistA eq) l2 ->  
+  equivlistA eq l1 l2 ->
+  length l1 = length l2.
+Admitted.
+
 Lemma MIS_Bounds_2_verts :
   forall G (l : list (list T)) t1 t2,
     MIS_set_gGraph G l -> 
     (gV _ G) = t1::t2::nil ->
     length l <= 2.
 Proof.
-
-Admitted.
+  intros G l t1 t2 H H2.
+  destruct G; simpl in *.
+  subst gV0.
+  destruct gE0.
+  { inversion H; subst.
+    assert (Hx: equivlistA eq l ((t1 :: nil) :: (t2 :: nil) :: nil)).
+    { admit. }
+    apply equivlistA_length in Hx.
+    rewrite Hx; auto.
+    auto.
+    constructor.
+    inversion 1; subst.
+    destruct (H5 t1).
+    assert (Hy: InA eq t1 (t1 :: nil)).
+    { constructor. auto. }
+    generalize (H4 Hy). inversion 1; subst.
+    inversion gV_simplset0; subst.
+    apply H10; constructor; auto.
+    inversion H9.
+    inversion H5.
+    constructor.
+    inversion 1.
+    constructor. }
+  assert (Hx: gE0 = nil).
+  { admit. (*provable*) }
+  subst gE0.
+  destruct p as [x1 y1].
+  generalize (gE_subset_l0 x1 y1 (in_eq (x1,y1) _)).
+  intros H2.
+  assert (Hy: In y1 (t1 :: t2 :: nil)).
+  { apply (gE_subset_l0 y1 x1).
+    apply gE_symm0; left; auto. }
+  assert (H3: (x1=t1 /\ y1=t2) \/ (x1=t2 /\ y1=t1)).
+  { admit. (*by H2 Hy*) }
+  destruct H3.
+  { destruct H0; subst.
+    admit. (*only MIS is (t1 :: t2 :: nil), by H*) }
+  admit. (*by symmetric to previous case*)
+Admitted. 
 
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
@@ -1447,7 +1494,7 @@ Proof.
     eapply Rle_trans. apply H. admit. eauto.
     admit.  
     apply H. admit. eauto. eauto. admit.
-    (* Nate's inequailities *)
+    (* Nate's inequalities *)
     admit.
   }
   { (* This needs the finished proof from Wood's paper *)
