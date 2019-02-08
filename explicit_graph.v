@@ -1,6 +1,7 @@
 Require Import SetoidList Omega.
-Require Import graph_basics.
 Require Import moon_lemma.
+Require Import graph_basics.
+
 Close Scope R_scope.
 
 Section GenGraphs.
@@ -1372,6 +1373,1568 @@ Proof.
   apply H4. auto.
 Qed.
 
+
+Require Import List.
+Import ListNotations.
+
+Definition d := [1;2;3].
+
+Definition index := nat.
+Definition value := nat.
+Definition Pair_map := list (value * index).
+
+Fixpoint vertex_index_list' (V : list nat) ( count: nat ) :=
+  match V with
+  | nil => nil
+  | x::xs => count :: (vertex_index_list' xs (S count))
+  end.
+
+Definition vertex_index_list (V : list nat) : list nat :=
+  vertex_index_list' V 0.
+
+Lemma vertex_index_1 : forall c V C,
+    In c (vertex_index_list' V C) -> c - C < (length V).
+Proof.
+  induction V; intros.
+  inversion H.
+  simpl in *.
+  destruct H; subst.
+  simpl.
+  omega.
+  apply IHV in H.
+  omega.
+Qed.
+
+Fixpoint vertex_data_map (V : list nat) (count : nat)
+         : Pair_map :=
+  match V with
+  | nil => nil
+  | h :: t => (h,count):: (vertex_data_map t (S count))
+  end.
+
+Lemma vertex_map_fact1 : forall v V C,
+    In v V -> exists c, In (v,c) (vertex_data_map V C).
+Proof.
+  induction V; intros.
+  inversion H.
+  destruct H; subst.
+  exists C; left; auto.
+  apply IHV with (C := S C) in H.
+  destruct H.
+  exists x.
+  right.
+  auto.
+Qed.
+
+Lemma vertex_map_fact2 : forall V v C c,
+    In (v,c) (vertex_data_map V C) -> c -C < length V.
+Proof.
+  induction V; intros.
+  inversion H.
+  simpl in *.
+  destruct H; subst.
+  inversion H.
+  subst.
+  simpl.
+  omega.
+  apply IHV in H.
+  omega.
+Qed.
+    
+Lemma vertex_map_fact3 : forall v c V,
+    In (v,c) (vertex_data_map V 0) -> c < (length V).
+Proof.
+  intros.
+  destruct V.
+  inversion H.
+  apply vertex_map_fact2 in H; auto.
+  omega.
+Qed.
+
+Import index.
+
+Program Fixpoint lookup_Option (v : value) (m : Pair_map) (V : nat)
+        (pf2 : forall c, In (v,c) m -> c < V)
+: option (Ix V) :=
+  match m with
+  | nil => None
+  | (x,y) :: h =>
+    if Nat.eq_dec v x then Some (@Index.mk V y _)  else
+      lookup_Option v h V _ 
+  end.
+Next Obligation.
+  apply pf2.
+  constructor; auto.
+Defined.
+Next Obligation.
+  apply pf2.
+  right.
+  auto.
+Defined.
+
+Lemma ob2 : forall v x h y ,
+    existsb (fun elt : nat * index => fst elt =? v) ((x, y) :: h) =
+    true ->  v <> x -> 
+    existsb (fun elt : nat * index => fst elt =? v) h = true.
+Proof.
+  intros.
+  rename H into pf.
+  rename H0 into H.
+  apply existsb_exists.
+  apply existsb_exists in pf.
+  destruct pf.
+  destruct H0.
+  inversion H0.
+  {
+    destruct x0.
+    simpl in *.
+    exfalso.
+    apply Nat.eqb_eq in H1.
+    subst.
+    inversion H2; subst; contradiction.
+  }
+  {  
+    inversion H0.
+    {
+      exfalso.
+      apply Nat.eqb_eq in H1.
+      destruct x0; inversion H3; subst; clear H3.
+      simpl in H; contradiction.
+    }
+    {
+      exists x0; intuition.
+    }
+  }
+Qed.
+
+
+Program Definition l_ob1 :=
+  fun (v : value) (m : Pair_map)
+  (pf : existsb (fun elt : nat * index => fst elt =? v) m = true)
+  (Heq_m : [] = m) =>
+eq_ind []
+  (fun m0 : Pair_map =>
+   existsb (fun elt : nat * index => fst elt =? v) m0 = true -> False)
+  (fun pf0 : existsb (fun elt : nat * index => fst elt =? v) [] = true
+   =>
+   let H : False :=
+     eq_ind (existsb (fun elt : nat * index => fst elt =? v) [])
+       (fun e : bool => if e then False else True) _ true pf0 in
+   False_ind False H) m Heq_m pf.
+
+Import eqtype.
+Require Import ssreflect.
+
+Definition list_eq_dec : forall (l l' : list (nat*nat)),
+    {l = l'} + {~l = l'}.
+Proof.
+  intros.
+  destruct (lists_eq l l') eqn:H.
+  destruct (lists_eq_eq l l').
+  left.
+  exact e.
+  right; exact n.
+  right.
+  destruct (lists_eq_eq l l').
+  inversion H.
+  exact n.
+Defined.
+
+Definition lookup_false_case v :=
+        fun
+        pf0 : existsb (fun elt : nat * index => snd elt =? v) [] = true
+      =>
+      let H :
+        forall (A : Type) (f : A -> bool) (l : list A),
+        existsb f l = true -> exists x : A, In x l /\ f x = true :=
+        fun (A : Type) (f : A -> bool) (l : list A) =>
+        match existsb_exists f l with
+        | conj x _ => x
+        end in
+      let pf1 :
+        exists x : nat * index, In x [] /\ (snd x =? v) = true :=
+        H (nat * index)%type (fun elt : nat * index => snd elt =? v) []
+          pf0 in
+      False_rec index
+        match pf1 with
+        | ex_intro _ x H0 =>
+            unkeyed
+              match H0 with
+              | conj H1 H2 =>
+                  (fun (H3 : In x []) (_ : (snd x =? v) = true) =>
+                   False_ind False H3) H1 H2
+              end
+        end
+.
+
+
+Definition f (E :list (nat * nat)) :
+  match E with
+  | [] => list (nat * nat)
+  | _ :: _ => E = E -> list (nat * nat)
+  end -> list (nat * nat) := 
+  match
+    E as l
+    return
+    (match l with
+     | [] => list (nat * nat)
+     | _ :: _ => l = l -> list (nat * nat)
+     end -> list (nat * nat))
+  with
+  | [] => fun Nil : list (nat * nat) => Nil
+  | p :: E0 =>
+    fun H : p :: E0 = p :: E0 ->
+            list (nat * nat) => H eq_refl
+  end.
+
+  (* f E (match E as E' return *)
+  (*       (match E' *)
+  (*        with nil => list (nat * nat) *)
+  (*        | h::t => E'=E-> list (nat * nat) end) *)
+  (* with *)
+
+Definition convert_types (m : list (nat*nat)) (v : nat) :
+match m as m' with
+  | [] => m=m -> index
+  | _ :: _ =>
+      (* existsb (fun elt : nat * index => fst elt =? v) m = true -> index *)
+    m = m -> index
+  end -> index := 
+match m as m' 
+        return
+        (match m' with
+         | nil => m = m -> index
+         | _ :: _ =>
+           m' = m' -> index
+        end -> index)
+  with
+  | nil => fun H => H eq_refl
+  | h::t => (fun H :
+                   (h::t) = (h::t) -> index => 
+               H eq_refl)
+end.
+
+Definition lookup_helper x y l v H m Heq pf
+  :
+  existsb (fun elt : nat * index => fst elt =? v) l = true := 
+  (eq_ind ((x, y) :: l)
+                 (fun m0 : list (value * index) =>
+                  existsb (fun elt : nat * index => fst elt =? v) m0 =
+                  true ->
+                  existsb (fun elt : nat * index => fst elt =? v) l =
+                  true)
+                 (fun
+                    pf0 : existsb
+                            (fun elt : nat * index => fst elt =? v)
+                            ((x, y) :: l) = true => 
+                  ob2 v x l y pf0 H) m Heq pf).
+
+Definition lookup_helper2 v m
+           (pf : existsb (fun elt : nat * index => fst elt =? v) m = true)               (Heq : [] = m)
+           : existsb (fun elt : nat * index => fst elt =? v) [] = true
+  := 
+             ( (eq_ind_r 
+                (fun m0 : list (value * index) =>
+                 existsb (fun elt : nat * index => fst elt =? v) m0 =
+                 true)) pf [] Heq ).
+
+Fixpoint lookup (v : value) (m : Pair_map)
+         (pf : existsb (fun elt => Nat.eqb (fst elt) v) m = true)
+         {struct m}
+  : index :=
+(convert_types m v (match
+    m as m'
+    return (
+      match m' with
+        nil => m' = m -> index
+      | h::t =>
+        m' = m -> index
+      end)
+      
+  with
+  | [] =>  
+    fun Heq : [] = m =>
+      lookup_false_case v (lookup_helper2 v m pf Heq)
+     
+  | (x,y) :: l =>
+    fun Heq => 
+      ( (match Nat.eq_dec v x return index
+         with 
+       | left _ =>  y
+       | right H =>  
+      lookup v l (lookup_helper x y l v H m Heq pf) 
+     end))
+end)).
+
+(* Fixpoint lookup (v : value) (m : Pair_map) *)
+(*         (pf : existsb (fun elt => Nat.eqb (fst elt) v) m = true) *)
+(*   : index := *)
+(*     match *)
+(*     m as l *)
+(*     return *)
+(*       (existsb (fun elt : nat * index => fst elt =? v) l = true -> index) *)
+(*   with *)
+(*   | [] => *)
+(*     lookup_false_case v *)
+(*   | p :: m0 => *)
+(*       fun *)
+(*         pf0 : existsb (fun elt : nat * index => fst elt =? v) (p :: m0) = *)
+(*               true => *)
+(*       (let *)
+(*          (x, y) as p0 *)
+(*           return *)
+(*             (existsb (fun elt : nat * index => fst elt =? v) (p0 :: m0) = *)
+(*              true -> index) := p in *)
+(*        fun *)
+(*          pf1 : existsb (fun elt : nat * index => fst elt =? v) *)
+(*                  ((x, y) :: m0) = true => *)
+(*        match Nat.eq_dec v x with *)
+(*        | left _ => y *)
+(*        | right H => lookup v m0 (ob2 v x m0 y pf1 H) *)
+(*        end) pf0 *)
+(*   end pf *)
+(* . *)
+
+Lemma li_ob1 : forall v x y m0 ,
+    existsb (fun elt : nat * index => snd elt =? v) ((x, y) :: m0) =
+    true -> 
+    v <> y -> 
+    existsb (fun elt : value * nat => snd elt =? v) m0 = true.
+Proof.
+  intros.
+  rename H into pf1.
+  rename H0 into H.
+  apply existsb_exists.
+  apply existsb_exists in pf1.
+  destruct pf1.
+  destruct H0.
+  inversion H0.
+  {
+    destruct x0.
+    simpl in *.
+    exfalso.
+    apply Nat.eqb_eq in H1.
+    subst.
+    inversion H2; subst; contradiction.
+  }
+  {  
+    inversion H0.
+    {
+      exfalso.
+      apply Nat.eqb_eq in H1.
+      destruct x0; inversion H3; subst; clear H3.
+      simpl in H; contradiction.
+    }
+    {
+      exists x0; intuition.
+    }
+  }
+Qed.
+
+
+Definition lookup_index_helper x y l v H m Heq pf
+  :
+  existsb (fun elt : nat * index => snd elt =? v) l = true := 
+  (eq_ind ((x, y) :: l)
+                 (fun m0 : list (value * index) =>
+                  existsb (fun elt : nat * index => snd elt =? v) m0 =
+                  true ->
+                  existsb (fun elt : nat * index => snd elt =? v) l =
+                  true)
+                 (fun
+                    pf0 : existsb
+                            (fun elt : nat * index => snd elt =? v)
+                            ((x, y) :: l) = true => 
+                     li_ob1 v x y l pf0 H) m Heq pf).
+
+Definition lookup_index_helper2 v m
+           (pf : existsb (fun elt : nat * index => snd elt =? v) m = true)               (Heq : [] = m)
+           : existsb (fun elt : nat * index => snd elt =? v) [] = true
+  := 
+             ( (eq_ind_r 
+                (fun m0 : list (value * index) =>
+                 existsb (fun elt : nat * index => snd elt =? v) m0 =
+                 true)) pf [] Heq ).
+
+Lemma sdf : forall (A : eqType)  (v y : A), (v == y) = false -> v <> y.
+Proof.
+  clear.
+  intros.
+  destruct (eqP v y) => //.
+Qed.
+
+Fixpoint lookup_index (v : index) (m : Pair_map)
+        (pf : existsb (fun elt => Nat.eqb (snd elt) v) m = true)
+        (* (pf2 : forall c, In (v,c) m -> c < V) *)
+: value := 
+   (convert_types m v (match
+    m as m'
+    return (
+      match m' with
+        nil => m' = m -> index
+      | h::t =>
+        m' = m -> index
+      end)
+      
+  with
+  | [] =>  
+    fun Heq : [] = m =>
+      lookup_false_case v (lookup_index_helper2 v m pf Heq)
+     
+  | (x,y) :: l =>
+    fun Heq => 
+    (* (match Nat.eqb v y as res *)
+      match Nat.eq_dec v y as res return index with
+      | left _  => x
+      | right H => 
+         (lookup_index v l (lookup_index_helper x y l v
+                                                         (H) m Heq pf))
+      end 
+end)).
+
+Require Import Coq.Program.Equality. (* for simplify_dep_elim *)
+Lemma sfsdf : forall v v0 m i pf pf',
+      (forall
+          (pf : existsb (fun elt : nat * index => fst elt =? v) m = true)
+          (pf' : existsb
+                   (fun elt : value * nat => snd elt =? lookup v m pf) m =
+                 true), lookup_index (lookup v m pf) m pf' = v) ->
+
+      v <> v0 ->
+      lookup_index (lookup v m pf) ((v0, i) :: m) pf' = v.
+    Proof.
+      clear.
+      intros.
+      simpl lookup_index.
+      destruct ( Nat.eq_dec (lookup v m pf) i) eqn:H4.
+      (* if you lookup v and get i it has to be equal to v0 
+         because of no dups... need to add *)
+      admit.
+      rewrite H; auto.
+      Admitted.
+
+(* nneds an addition assumption *)
+Lemma help_ : forall v i v0 m n pf pf',
+  (forall
+          (pf : existsb (fun elt : value * nat => snd elt =? v) m = true)
+          (pf' : existsb
+                   (fun elt : nat * index =>
+                    fst elt =? lookup_index v m pf) m = true),
+      lookup (lookup_index v m pf) m pf' = v) ->
+  
+lookup (lookup_index v m (li_ob1 v v0 i m pf n)) ((v0, i) :: m) pf' =
+  v.
+Proof.
+  clear.
+  intros.
+  simpl lookup.
+  destruct (Nat.eq_dec (lookup_index v m (li_ob1 v v0 i m pf n)) v0) eqn:H4.
+  admit.
+  rewrite H; auto.
+Admitted.
+
+Lemma lookup_index_inverse :
+  forall v m pf pf',
+    lookup_index (lookup v m pf) m pf' = v.
+Proof.
+  clear.
+  induction m.
+  {
+    intros.
+    exfalso.
+    apply (l_ob1 v [] pf eq_refl).
+  }
+  revert IHm.
+  simpl lookup.
+  destruct a.
+  simplify_dep_elim.
+  simpl lookup in pf'.
+  simpl lookup_helper.
+  destruct (Nat.eq_dec v v0) eqn:H1.
+  {
+    subst.
+    simpl.
+    destruct (Nat.eq_dec i i); auto.
+    {
+      contradiction.
+    }
+  }
+    apply sfsdf; auto.
+Qed.
+
+Lemma lookup_inverse :
+  forall v m pf pf',
+    lookup (lookup_index v m pf) m pf' = v.
+Proof.
+  clear.
+  induction m.
+  {
+    intros.
+    exfalso.
+    apply (l_ob1 v [] pf eq_refl).
+  }
+  revert IHm.
+  simpl lookup_index.
+  destruct a.
+  simplify_dep_elim.
+  simpl lookup_index in pf'.
+  simpl lookup_index_helper.
+  destruct (Nat.eq_dec v i) eqn:H1.
+  {
+    subst.
+    simpl.
+    destruct (Nat.eq_dec v0 v0); auto.
+    {
+      contradiction.
+    }
+  }
+  apply help_; auto.
+Qed.
+
+
+(* Fixpoint lookup_index (v : index) (m : Pair_map) *)
+(*         (pf : existsb (fun elt => Nat.eqb (snd elt) v) m = true) *)
+(*         (* (pf2 : forall c, In (v,c) m -> c < V) *) *)
+(* : value :=  *)
+(*   match *)
+(*     m as l *)
+(*     return *)
+(*       (existsb (fun elt : nat * index => snd elt =? v) l = true -> index) *)
+(*   with *)
+(*   | [] => *)
+(*     lookup_false_case v *)
+(*   | p :: m0 => *)
+(*       fun *)
+(*         pf0 : existsb (fun elt : nat * index => snd elt =? v) (p :: m0) = *)
+(*               true => *)
+(*       (let *)
+(*          (x, y) as p0 *)
+(*           return *)
+(*             (existsb (fun elt : nat * index => snd elt =? v) (p0 :: m0) = *)
+(*              true -> index) := p in *)
+(*        fun *)
+(*          pf1 : existsb (fun elt : nat * index => snd elt =? v) *)
+(*                  ((x, y) :: m0) = true => *)
+(*        match Nat.eq_dec v y with *)
+(*        | left _ => x *)
+(*        | right H => lookup_index v m0 (li_ob1 v x y m0 pf1 H) *)
+(*        end) pf0 *)
+(*   end pf. *)
+
+
+(* Next Obligation. *)
+(*   apply existsb_exists. *)
+(*   apply existsb_exists in pf. *)
+(*   destruct pf. *)
+(*   destruct H0. *)
+(*   inversion H0. *)
+(*   { *)
+(*     destruct x0. *)
+(*     simpl in *. *)
+(*     exfalso. *)
+(*     apply Nat.eqb_eq in H1. *)
+(*     subst. *)
+(*     inversion H2; subst; contradiction. *)
+(*   } *)
+(*   {   *)
+(*     inversion H0. *)
+(*     { *)
+(*       exfalso. *)
+(*       apply Nat.eqb_eq in H1. *)
+(*       destruct x0; inversion H3; subst; clear H3. *)
+(*       simpl in H; contradiction. *)
+(*     } *)
+(*     { *)
+(*       exists x0; intuition. *)
+(*     } *)
+(*   } *)
+(* Defined. *)
+
+
+Definition ret A (x : A) := Some x.
+ 
+Definition bind A B(a : option A) (f : A -> option B) : option B :=
+  match a with
+    | Some x => f x
+    | None => None
+  end.
+
+Notation "X <- c1 ;; c2" := (bind c1 (fun X => c2)) 
+(at level 100, c1 at next level, right associativity) .
+
+Fixpoint update_edges_Option
+        (ind_map : Pair_map) (E : list (nat*nat))
+        (V : nat)
+        (pf2 : forall v c, In (v,c) ind_map -> c < V)
+        : option (list (((Ix V)) * ( (Ix V)))) :=
+  match E with
+  | nil => Some nil
+  | (x,y) :: t =>
+    match (lookup_Option x ind_map V (fun
+                                         c (H : In (x, c) ind_map) => 
+                                        pf2 x c H)) with
+    | Some x => 
+      match (lookup_Option y ind_map V
+                           (fun c (H : In (y, c) ind_map) => 
+                                        pf2 y c H)
+            ) with
+      | Some y => 
+        match update_edges_Option ind_map t V
+                                  (
+                                    fun v c (H : In (v, c) ind_map) => 
+              pf2 v c H
+    
+                                  )
+        with
+        | Some l => 
+          Some ((x,y)::l)
+        | None => None
+        end
+      | None => None
+      end
+    | None => None
+    end
+  end.
+
+
+Definition update_edges_1 :
+      forall (ind_map : Pair_map) (E : list (nat * nat)),
+       (forall e1 e2 : nat,
+        In (e1, e2) E ->
+        existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) ind_map = true) ->
+       forall (x y : nat) (t : list (nat * nat)),
+       (x, y) :: t = E ->
+       existsb (fun elt : nat * index => fst elt =? x) ind_map = true
+
+
+  := 
+fun (ind_map : Pair_map) (E : list (nat * nat))
+  (pf : forall e1 e2 : nat,
+        In (e1, e2) E ->
+        existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) ind_map = true)
+  (x y : nat) (t : list (nat * nat)) (Heq_E : (x, y) :: t = E) =>
+eq_ind ((x, y) :: t)
+  (fun E0 : list (nat * nat) =>
+   (forall e1 e2 : nat,
+    In (e1, e2) E0 ->
+    existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+    existsb (fun elt : nat * index => fst elt =? e2) ind_map = true) ->
+   existsb (fun elt : nat * index => fst elt =? x) ind_map = true)
+  (fun
+     pf0 : forall e1 e2 : nat,
+           In (e1, e2) ((x, y) :: t) ->
+           existsb (fun elt : nat * index => fst elt =? e1) ind_map =
+           true /\
+           existsb (fun elt : nat * index => fst elt =? e2) ind_map =
+           true =>
+   let H : In (x, y) ((x, y) :: t) := or_introl eq_refl in
+   let H0 :
+     existsb (fun elt : nat * index => fst elt =? x) ind_map = true /\
+     existsb (fun elt : nat * index => fst elt =? y) ind_map = true :=
+     pf0 x y H in
+   and_ind
+     (fun
+        (H1 : existsb (fun elt : nat * index => fst elt =? x) ind_map =
+              true)
+        (_ : existsb (fun elt : nat * index => fst elt =? y) ind_map =
+             true) => H1) H0) E Heq_E pf
+.
+
+Definition update_edges' (ind_map : Pair_map) (E : list (nat*nat))
+        (pf : forall e1 e2,
+            In (e1,e2) E -> 
+            (existsb (fun elt => Nat.eqb (fst elt) e1) ind_map = true) /\
+            (existsb (fun elt => Nat.eqb (fst elt) e2) ind_map = true)
+        )
+  : list (nat * nat).
+  induction E.
+  exact nil.
+  destruct a.
+  refine(_ :: _).
+  refine (pair _ _).
+  refine (lookup n ind_map _).
+  specialize (pf n n0 (in_eq (n,n0) E)).
+  destruct pf.
+  exact H.
+  refine (lookup n0 ind_map _).
+  specialize (pf n n0 (in_eq (n,n0) E)).
+  destruct pf.
+  exact H0.
+  apply IHE.
+  intros.
+  apply pf; right; auto.
+Defined.
+  
+Definition ob :=
+fun (ind_map : Pair_map) (E : list (nat * nat))
+  (pf : forall e1 e2 : nat,
+        In (e1, e2) E ->
+        existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) ind_map = true)
+  (x y : nat) (t : list (nat * nat)) (Heq_E : (x, y) :: t = E) =>
+eq_ind ((x, y) :: t)
+  (fun E0 : list (nat * nat) =>
+   (forall e1 e2 : nat,
+    In (e1, e2) E0 ->
+    existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+    existsb (fun elt : nat * index => fst elt =? e2) ind_map = true) ->
+   (x, y) :: t = E0)
+  (fun
+     _ : forall e1 e2 : nat,
+         In (e1, e2) ((x, y) :: t) ->
+         existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+         existsb (fun elt : nat * index => fst elt =? e2) ind_map = true
+   => eq_refl) E Heq_E pf.
+
+Lemma update_edges_2 :
+  forall ind_map l x y E
+         (pf : forall e1 e2 : nat,                                                In (e1, e2) E ->
+    existsb (fun elt : nat * index => fst elt =? e1) ind_map = true /\
+    existsb (fun elt : nat * index => fst elt =? e2) ind_map = true),
+    (x, y) :: l = E -> 
+    existsb (fun elt : nat * index => fst elt =? y) ind_map = true.
+Proof.
+  intros.
+  subst.
+  specialize (pf x y (in_eq (x,y) l)).
+  destruct pf.
+  exact H0.
+Qed.
+
+
+Fixpoint update_edges (ind_map : Pair_map) (E : list (nat*nat))
+        (pf : forall e1 e2,
+            In (e1,e2) E -> 
+            (existsb (fun elt => Nat.eqb (fst elt) e1) ind_map = true) /\
+            (existsb (fun elt => Nat.eqb (fst elt) e2) ind_map = true)
+        ) : list (nat*nat) := 
+  f E (match E as E' return
+        (match E'
+         with nil => list (nat * nat)
+         | h::t => E'=E-> list (nat * nat) end)
+  with
+  | nil => nil
+  | (x,y) :: l => (fun Heq =>
+                    ((lookup x ind_map
+                      (update_edges_1 ind_map E pf x y l Heq )),
+                     (lookup y ind_map
+                    (update_edges_2 ind_map l x y E pf Heq)))
+                              ::
+                              update_edges ind_map l 
+            (fun (e1 e2 : nat) (H : In (e1, e2) l) =>
+              pf e1 e2
+                (eq_ind ((x, y) :: l)
+                   (fun E0 : list (nat * nat) => In (e1, e2) E0)
+                   (or_intror H) E Heq)) 
+
+)
+  end).
+(* Next Obligation. *)
+(*   specialize (pf x y (in_eq (x,y) l)). *)
+(*   destruct pf. *)
+(*   exact H0. *)
+(* Defined. *)
+(* Next Obligation. *)
+(*   assert (In (x, y) ((x, y) :: t)). *)
+(*   constructor; auto. *)
+(*   apply pf in H. *)
+(*   intuition. *)
+(* Defined. *)
+(* Next Obligation. *)
+(*   apply pf; auto. *)
+(*   constructor 2; auto. *)
+(* Defined. *)
+
+
+Lemma lookup_help : forall n m pf1 pf1' ,
+      lookup n m pf1 = lookup n m pf1'.
+Proof.
+  simplify_dep_elim.
+  induction m; 
+  simpl; auto.
+  unfold lookup_false_case.
+  destruct (existsb_exists (fun elt : nat * index => snd elt =? n) []).
+  simplify_dep_elim.
+  destruct (e (lookup_helper2 n [] pf1 eq_refl)).
+  exfalso.
+  intuition.
+  intros.
+  destruct a.
+  destruct (Nat.eq_dec n v); auto.
+Qed.
+
+Lemma lookup_index_help : forall n m pf1 pf1' ,
+      lookup_index n m pf1 = lookup_index n m pf1'.
+Proof.
+  simplify_dep_elim.
+  induction m; 
+  simpl; auto.
+  {
+    unfold lookup_false_case.
+    destruct (existsb_exists (fun elt : nat * index => snd elt =? n) []).
+    simplify_dep_elim.
+    destruct (e (lookup_helper2 n [] pf1 eq_refl)).
+    exfalso.
+    intuition.
+  }
+  intros.
+  destruct a.
+  destruct (Nat.eq_dec n i); auto.
+Qed.
+
+Lemma upd_in_ : forall c1 c2 m E pf1' pf1,
+  In (c1, c2)
+        (update_edges m E pf1)
+         <->
+  In (c1, c2) (update_edges m E pf1').
+Proof.
+  clear.
+  split.
+  +
+  simplify_dep_elim.
+  induction E; auto.
+  simpl in x.
+  simpl.
+  destruct a.
+  destruct x.
+  {
+    rewrite <- H.
+    left.
+    clear.
+    generalize dependent ((update_edges_1 m ((n, n0) :: E) pf1' n n0 E eq_refl)).
+    generalize dependent ((update_edges_2 m E n n0 ((n, n0) :: E) pf1' eq_refl)).
+    generalize dependent (update_edges_1 m ((n, n0) :: E) pf1 n n0 E eq_refl).
+    generalize dependent (update_edges_2 m E n n0 ((n, n0) :: E) pf1 eq_refl).
+    intros.
+    assert (lookup n m e2 = lookup n m e0).
+    apply lookup_help.
+    assert (lookup n0 m e1 = lookup n0 m e).
+    apply lookup_help.
+    auto.
+  }
+  right.
+  eapply IHE; eauto.
++
+  simplify_dep_elim.
+  induction E; auto.
+  simpl in x.
+  simpl.
+  destruct a.
+  destruct x.
+  {
+    rewrite <- H.
+    left.
+    clear.
+    generalize dependent ((update_edges_1 m ((n, n0) :: E) pf1' n n0 E eq_refl)).
+    generalize dependent ((update_edges_2 m E n n0 ((n, n0) :: E) pf1' eq_refl)).
+    generalize dependent (update_edges_1 m ((n, n0) :: E) pf1 n n0 E eq_refl).
+    generalize dependent (update_edges_2 m E n n0 ((n, n0) :: E) pf1 eq_refl).
+    intros.
+    assert (lookup n m e2 = lookup n m e0).
+    apply lookup_help.
+    assert (lookup n0 m e1 = lookup n0 m e).
+    apply lookup_help.
+    auto.
+  }
+  right.
+  eapply IHE; eauto.
+Qed.
+    
+Lemma help : forall m n n0 E pf1 pf1'
+  pfl1 pfl1' ,
+    forall (c1 c2 : nat),
+  In (c1, c2)
+     (update_edges m ((n, n0) :: E) pf1)
+  ->  (c1,c2) = (lookup n m pfl1, lookup n0 m  pfl1') \/
+  In (c1, c2)
+     (update_edges m E pf1').
+Proof.
+  intros.
+  clear - H.
+  simpl in H.
+  destruct H; auto.
+  {
+    left.
+    rewrite <- H.
+    rewrite <- lookup_help with (pf1 := pfl1).
+    rewrite <- lookup_help with (pf1 := pfl1').
+    auto.
+  }
+  {
+    right.
+    generalize dependent ((fun (e1 e2 : nat) (H : In (e1, e2) E) =>
+            pf1 e1 e2 (or_intror H))).
+    intros.
+    eapply upd_in_; eauto.
+  }
+Qed.
+
+Lemma nat_pair_dec : forall (x y: nat*nat),
+      {x = y} + {~ x = y}.
+Proof.
+  intros.
+  destruct x,y.
+  destruct (Nat.eq_dec n n1);
+    destruct (Nat.eq_dec n0 n2); subst; auto.
+  all: (right;
+  intros Hnot;
+  inversion Hnot;
+  subst;
+  contradiction).
+Qed.
+
+Definition ix_to_nat V(i : Ix V) : nat :=
+  match i with
+  | @Index.mk _ i0 _ => i0
+  end.
+
+
+Inductive EquivList_map {V : list nat}
+(* {Adec : forall (x y : (A*A)), {x = y} + {~ x = y}} *)
+  : list (nat * nat) ->
+    list (nat * nat)
+    -> Prop :=
+| empty_same : EquivList_map nil nil
+| cons_eq : forall (x y : nat) (x' y' : nat)
+        (l l' : list (nat*nat)) pf pf1,
+    let ind_map := (vertex_data_map V 0) in
+      lookup x ind_map pf = x'->
+      lookup y ind_map pf1 = y'->
+    EquivList_map l l' ->
+    EquivList_map ((x,y)::l) ((x',y')::l').
+
+(* Fixpoint unupdate_edges (ind_map :  *)
+
+(* Lemma update_edges_bij : forall E V pf, *)
+(*     let ind_map := (vertex_data_map V 0) in *)
+(*     let f := (update_edges ind_map E pf) *)
+
+
+Program Definition IndexEdges_from_edges (G : @GenGraph nat) :
+  (list (nat * nat)) :=
+  match G with
+  | {| gV := gV0; gE := gE0;
+       gE_irref := gE_irref0; gE_symm := gE_symm0;
+       gV_simplset := gV_simplset0; gE_simplset := gE_simplset0;
+       gE_subset_l := gE_subset_l0
+    |}
+    =>
+    let edges := update_edges (vertex_data_map gV0 0) gE0
+                              _ in edges
+                              
+(*     match *)
+(*       (update_edges_Option (vertex_data_map gV0 0) gE0 (length gV0) *)
+(*                            (fun (v : value) (c : index) *)
+(*   (H : In (v, c) (vertex_data_map gV0 0)) => *)
+(* let H0 : c < length gV0 := vertex_map_fact3 v c gV0 H in H0)  *)
+(*       ) *)
+(*     with *)
+(*     | Some l => l *)
+(*     | None => nil *)
+(*     end *)
+  end.
+Next Obligation.
+  pose proof vertex_map_fact3.
+  pose proof vertex_map_fact1.
+  assert (In e1 gV0).
+  {
+    eapply gE_subset_l0; eauto.
+  }
+  assert (In e2 gV0).
+  {
+    eapply gE_subset_l0; eauto.
+  }
+  pose proof H2.
+  pose proof H3.
+  apply vertex_map_fact1 with (C := 0)in H2.
+  apply vertex_map_fact1 with (C := 0)in H3.
+  destruct H2,H3.
+  split;
+    apply existsb_exists; eauto;
+    [ exists (e1,x) |  exists (e2,x0)];
+    intuition;
+    simpl;
+    apply Nat.eqb_eq; auto.
+Defined.
+(* Next Obligation. *)
+(*   apply vertex_map_fact3 in H; auto. *)
+(* Defined. *)
+
+Lemma lookup_In : forall V n C,
+    forall e,
+      In (n, lookup n (vertex_data_map V C) e) (vertex_data_map V C).
+Proof.
+  clear.
+  intros.
+  generalize dependent C.
+  induction V.
+  {
+    intros.
+    exfalso; intuition.
+  }
+  intros.
+  simpl.
+  destruct (Nat.eq_dec n a).
+  subst.
+  left; auto.
+  right.
+  eapply IHV.
+Qed.
+
+Lemma lookup_bounds : forall V n ,
+    forall e,
+    lookup n (vertex_data_map V 0) e < length V.
+Proof.
+  clear.
+  intros.
+  pose proof (lookup_In V n 0 e).
+  apply vertex_map_fact3 in H.
+  auto.
+Qed.
+
+(* Lemma lookup_index_bounds : forall V n, *)
+(*     forall e, *)
+(*       lookup_index n (vertex_data_map V 0) e < length V. *)
+
+Lemma update_edges_bound : forall e1 e2 V E pf,
+  In (e1, e2)
+  (update_edges (vertex_data_map V 0) E pf) ->
+   e1 < (length V) /\ e2 < length V.
+Proof.
+  clear.
+  simplify_dep_elim.
+  induction E.
+  exfalso; intuition.
+  {
+    simplify_dep_elim.
+    simpl in x.
+    destruct a.
+    destruct x.
+    {
+      assert (lookup n (vertex_data_map V 0)
+                     (update_edges_1 (vertex_data_map V 0) 
+                                     ((n, n0) :: E) pf n n0 E eq_refl) = e1).
+      {
+        inversion H; auto.
+      }
+      assert (lookup n0 (vertex_data_map V 0)
+                     (update_edges_2 (vertex_data_map V 0) E n n0 
+                                     ((n, n0) :: E) pf eq_refl) = e2).
+      {
+        inversion H; auto.
+      }
+      split.
+      {
+        rewrite <- H0.
+        apply lookup_bounds.
+      }
+      {
+        rewrite <- H1.
+        apply lookup_bounds.
+      }
+    }
+    eapply IHE; eauto.
+  }
+Qed.
+
+Lemma IndexEdges_from_edges_to_index : forall G e1 e2,
+    In (e1,e2) (IndexEdges_from_edges G) ->
+    e1 < (length (gV _ G)) /\ e2 < (length (gV _ G)).
+Proof.
+  clear.
+  intros.
+  unfold IndexEdges_from_edges in H.
+  destruct G.
+  simpl in *.
+  eapply update_edges_bound; eauto.
+Qed.
+
+Lemma bsdf : forall V E,
+    (NoDup E) -> 
+    (forall x y : nat, In (x, y) E -> In x V) -> 
+    (forall x y : nat, In (x, y) E -> In (y, x) E) -> 
+    exists l, update_edges_Option (vertex_data_map V 0) E 
+        (length V)
+        (fun (v : value) (c : index)
+           (H : In (v, c) (vertex_data_map V 0)) =>
+         vertex_map_fact3 v c V H) = Some l.
+Proof.
+  Admitted.
+
+(* I think I need to fix this function and the proofs will be 
+   easyish *)
+
+  Lemma edges_to_index_1 : forall x y xs (E : list (nat * nat)), E = (x, y) :: xs ->
+              In (x, y) ((x, y) :: xs) -> In (x, y) E.
+  Proof.
+    intros.
+    rewrite H.
+    exact H0.
+  Qed.
+  Lemma edge_to_index_2 : forall (E : list (nat*nat)) V x y xs,
+E = (x, y) :: xs -> 
+(forall e1 e2 : nat, In (e1, e2) E -> e1 < V /\ e2 < V) ->
+  forall e1 e2 : nat, In (e1, e2) xs -> e1 < V /\ e2 < V.
+Proof.
+  intros.
+  apply H0.
+  rewrite H.
+  right; auto.
+Qed.
+
+Fixpoint edges_to_index
+         (E : list (nat * nat)) V
+         (pf : forall e1 e2, In (e1,e2) E -> e1 < V /\ e2 < V)
+         {struct E}
+  : list (Ix V * Ix V) :=  
+  (match E as E' return (E = E') -> list (Ix V * Ix V) with
+  | nil => fun _ => nil
+  | (x,y)::xs  => fun pf0 => 
+                    (Index.mk (proj1 (pf x y (edges_to_index_1 x y xs E pf0
+                                                (in_eq (x,y) _)))),
+                     Index.mk (proj1 (pf x y (
+                                           edges_to_index_1 x y xs E pf0 (in_eq (x,y) _))))) :: (edges_to_index xs V (edge_to_index_2 E V x y xs pf0 pf))
+  end eq_refl) .
+
+Lemma not_in_index' : forall V E e1 e2,
+    forall pf pf1,
+      ~ In ((ix_to_nat _ e1),(ix_to_nat _ e2))
+        (update_edges (vertex_data_map V 0) E pf
+  )->
+    ~In (e1, e2)
+           (edges_to_index
+              (update_edges (vertex_data_map V 0) E pf) (length V) pf1).
+Proof.
+  Admitted.
+  
+Lemma not_in_index : forall G,
+    forall e1 e2,
+  ~ In ((ix_to_nat _ e1),(ix_to_nat _ e2)) (IndexEdges_from_edges G)->
+  ~ In (e1,e2) (edges_to_index (IndexEdges_from_edges G) (length (gV nat G))
+       (IndexEdges_from_edges_to_index G)).
+Proof.
+  intros.
+  intros Hnot.
+  unfold IndexEdges_from_edges in *.
+  destruct G; simpl in *.
+  eapply not_in_index' in H; eauto.
+Qed.
+
+(* generalize this first *)
+Lemma in_index : forall G,
+    forall e1 e2,
+  In ((ix_to_nat _ e1),(ix_to_nat _ e2)) (IndexEdges_from_edges G) <->
+  In (e1,e2) (edges_to_index (IndexEdges_from_edges G) (length (gV nat G))
+       (IndexEdges_from_edges_to_index G)).
+Proof.
+  split.
+  +
+    intros.
+  destruct G.
+  simpl in *.
+  assert (forall e1 e2 : nat,
+        In (e1, e2) gE0 ->
+        existsb (fun elt : nat * index => fst elt =? e1) (vertex_data_map gV0 0) = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) (vertex_data_map gV0 0) = true).
+  apply (fun (e1 e2 : nat) (H : In (e1, e2) gE0) =>
+            IndexEdges_from_edges_obligation_1 gV0 gE0 gE_symm0
+              gE_subset_l0 e1 e2 H).
+  apply upd_in_ with (pf1' := H0) in H.
+  (* clear gE_irref0 gE_symm0 gV_simplset0 gE_simplset0 gE_subset_l0. *)
+  induction (gE0).
+  { contradiction. }
+  {
+    intros.
+    simpl in H.
+    destruct a.
+    inversion H.
+    {
+      simpl.
+      left; eauto.
+      intros.
+  Admitted.
+
+Lemma in_update_edges : forall G e1 e2,
+    forall pf pf' ,
+    In (e1,e2) (gE _ G) <-> 
+    In (lookup e1 (vertex_data_map (gV _ G) 0) pf,
+        lookup e2 (vertex_data_map (gV _ G) 0) pf')
+    (IndexEdges_from_edges G).
+Proof.
+  clear.
+  split.
+  simplify_dep_elim.
+  destruct G.
+  simpl in *.
+  assert (forall e1 e2 : nat,
+        In (e1, e2) gE0 ->
+        existsb (fun elt : nat * index => fst elt =? e1) (vertex_data_map gV0 0) = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) (vertex_data_map gV0 0) = true).
+  apply (fun (e0 e3 : nat) (H0 : In (e0, e3) gE0) =>
+       IndexEdges_from_edges_obligation_1 gV0 gE0 gE_symm0 gE_subset_l0
+         e0 e3 H0).
+  apply upd_in_ with (pf1 := H).
+  clear gE_irref0 gE_symm0 gV_simplset0 gE_simplset0 gE_subset_l0.
+  revert x pf pf' H.
+  induction (gE0).
+  { contradiction. }
+  {
+    intros.
+    inversion x.
+    {
+      destruct a; subst.
+      inversion H0; subst.
+      clear H0.
+      simpl.
+      left.
+      clear.
+      simpl.
+      rewrite lookup_help.
+      assert (lookup e2 (vertex_data_map gV0 0)
+    (update_edges_2 (vertex_data_map gV0 0) l e1 e2 
+       ((e1, e2) :: l) H eq_refl)
+          = lookup e2 (vertex_data_map gV0 0) pf') by
+      apply lookup_help.
+      rewrite H0;
+      auto.
+    }
+    {
+      simpl.
+      destruct a.
+      simpl.
+      right.
+      apply IHl; auto.
+    }
+  }
+  +
+  simplify_dep_elim.
+  destruct G.
+  simpl in *.
+  assert (forall e1 e2 : nat,
+        In (e1, e2) gE0 ->
+        existsb (fun elt : nat * index => fst elt =? e1) (vertex_data_map gV0 0) = true /\
+        existsb (fun elt : nat * index => fst elt =? e2) (vertex_data_map gV0 0) = true).
+  apply (fun (e0 e3 : nat) (H0 : In (e0, e3) gE0) =>
+       IndexEdges_from_edges_obligation_1 gV0 gE0 gE_symm0 gE_subset_l0
+         e0 e3 H0).
+  apply upd_in_ with (pf1 := H) in x.
+  clear gE_irref0 gE_symm0 gV_simplset0 gE_simplset0 gE_subset_l0.
+  induction (gE0).
+  { contradiction. }
+  {
+    intros.
+    simpl in x.
+    destruct a; subst.
+    inversion x.
+    {
+      inversion H0; subst.
+      clear H0.
+      simpl.
+      left.
+      (* need a proof about lookup being unique *)
+      admit.
+    }
+    {
+      simpl.
+      simpl.
+      right.
+      eapply IHl; eauto.
+    }
+  }
+Admitted.
+
+Lemma in_index_lookup'' : forall e1  E V pf,
+    In (e1,e1) (update_edges (vertex_data_map V 0) E pf) ->
+    exists e1',
+      exists pf1 pf1',
+        In (lookup e1' (vertex_data_map V 0) pf1,
+            lookup e1' (vertex_data_map V 0) pf1' )
+           (update_edges (vertex_data_map V 0) E pf).
+Proof.
+  clear.
+  intros.
+  induction E.
+  simpl in *.
+  contradiction.
+  {
+    simpl in *.
+    destruct a.
+    simpl in *.
+    intros.
+    destruct H.
+    {
+      inversion H.
+      subst.
+      clear H.
+      exists n;
+      eauto.
+    }
+    {
+      specialize (IHE (fun (e0 e3 : nat) (H0 : In (e0, e3) E) =>
+          pf e0 e3 (or_intror H0)) H).
+      destruct IHE.
+      do  2destruct H0.
+      exists x; eauto.
+    }
+  }
+Qed.
+
+Lemma in_index_lookup' : forall e1 e2 E V pf,
+    In (e1,e2) (update_edges (vertex_data_map V 0) E pf) ->
+    exists e1' e2',
+      exists pf1 pf1',
+        In (lookup e1' (vertex_data_map V 0) pf1,
+            lookup e2' (vertex_data_map V 0) pf1' )
+           (update_edges (vertex_data_map V 0) E pf).
+Proof.
+  clear.
+  intros.
+  induction E.
+  simpl in *.
+  contradiction.
+  {
+    simpl in *.
+    destruct a.
+    simpl in *.
+    intros.
+    destruct H.
+    {
+      inversion H.
+      subst.
+      clear H.
+      exists n.
+      exists n0; eauto.
+    }
+    {
+      specialize (IHE (fun (e0 e3 : nat) (H0 : In (e0, e3) E) =>
+          pf e0 e3 (or_intror H0)) H).
+      destruct IHE.
+      do  3destruct H0.
+      exists x.
+      exists x0; eauto.
+    }
+  }
+Qed.
+
+Lemma in_index_lookup : forall e1 e2 G,
+    In (e1,e2) (IndexEdges_from_edges G) ->
+    exists e1' e2',
+      exists pf1 pf1',
+        In (lookup e1' (vertex_data_map (gV _ G) 0) pf1,
+            lookup e2' (vertex_data_map (gV _ G) 0) pf1')
+           (IndexEdges_from_edges G).
+Proof.
+  intros.
+  destruct G.
+  simpl in *.
+  eapply in_index_lookup'; eauto.
+Qed.
+
+Lemma in_index_lookup_one : forall e1 G,
+    In (e1,e1) (IndexEdges_from_edges G) ->
+    exists e1',
+      exists pf1 pf1',
+        In (lookup e1' (vertex_data_map (gV _ G) 0) pf1,
+            lookup e1' (vertex_data_map (gV _ G) 0) pf1')
+           (IndexEdges_from_edges G).
+Proof.
+  intros.
+  destruct G.
+  simpl in *.
+  eapply in_index_lookup''; eauto.
+Qed.
+
+Lemma helppppp : forall A a n0 (l l0 : list A),
+    incl (n0::l0) (a :: l) -> In n0 l0 -> incl l0 (a::l).
+Proof.
+  intros.
+  red in H.
+  destruct l0.
+  inversion H0.
+  inversion H0.
+  subst.
+  red; intros.
+  apply H; auto.
+  right; auto.
+  red; intros.
+  apply H.
+  right; auto.
+Qed.
+
+Lemma map_cons : forall s' a s,
+    In s' (map (fun l1 : list nat => a :: l1) s) <->
+    In a s' /\ (In s' s \/ In (remove Nat.eq_dec a s') s).
+Proof.
+  intros.
+  split; intros.
+  {
+    assert (In a s').
+    {
+      rewrite -> in_map_iff in H.
+      destruct H; intuition; subst ;auto.
+      left; auto.
+    }
+    split; auto.
+    rewrite -> in_map_iff in H.
+    destruct H.
+    do 2 destruct H; subst.
+    destruct (in_dec Nat.eq_dec a x).
+    {
+      
+      
+      assert (remove Nat.eq_dec a (a :: x) = x).
+      {
+        simpl.
+        destruct (Nat.eq_dec a a).
+        simpl.
+
+        assert (forall (l1 l2 : list nat), {l1=l2}+{~l1=l2}).
+        admit.
+Admitted.
+
+          
+(* This needs no dups in both lists to be true *)
+Lemma all_subsets_list_subset :
+  forall (A : Type) (l l0 : list nat),
+  In l0 (fintype.all_subsets l) <-> incl l0 l.
+Proof.
+  intros.
+  generalize dependent l0.
+  induction l.
+  {
+    split; intros.
+    {
+      red; intros.
+      simpl in H.
+      destruct H; subst; contradiction.
+    }
+    destruct l0.
+    simpl; left; auto.
+    simpl in H.
+    red in H.
+    assert (In n []).
+    apply H; left; auto.
+    contradiction.
+  }
+  intros.
+  simpl.
+  rewrite  in_app_iff.
+  rewrite map_cons.
+  do 2 rewrite IHl.
+  split; intros.
+  {
+    intuition.
+    red; intros.
+    red in H0.
+    destruct (Nat.eq_dec a0 a).
+    subst; left; auto.
+    right.
+    apply H0.
+    apply remove_mem; intuition.
+  }
+  {
+    destruct (in_dec Nat.eq_dec a l0).    
+    {
+      red in H.
+      right.
+      split; auto.
+      right.
+      red; intros.
+      apply remove_mem in H0.
+      destruct H0.
+      simpl in *.
+      apply H in H0.
+      intuition.
+    }
+    {
+      left.
+      clear - H n.
+      red.
+      intros.
+      destruct (Nat.eq_dec a0 a).
+      subst.
+      contradiction.
+      red in H.
+      apply H in H0.
+      inversion H0.
+      subst.
+      contradiction.
+      auto.
+    }
+  }
+Qed.
+
+Definition lGraph_of (G : @GenGraph nat) : 
+  lGraph.
+
+  refine (mkListGraph (length (gV _ G))
+                      (edges_to_index (IndexEdges_from_edges G)
+                                      (length (gV _ G))
+                                      (IndexEdges_from_edges_to_index G)
+                      )
+                      _ _).
+  {
+    intros.
+    simpl.
+    apply not_in_index.
+    intros Hnot.
+    apply in_index_lookup_one in Hnot.
+    destruct Hnot.
+    do 2destruct H.
+    apply in_update_edges in H.
+    destruct G; simpl in *.
+    intuition.
+    apply (gE_irref0 x0); auto.
+  }
+  {
+    split; intros.
+    {
+      (* This proof is going to be hard. 
+         Need to rewrite edges_to_index maybe and make it easier to 
+         work with
+       *)
+      apply in_index;
+        apply in_index in H.
+      generalize dependent (ix_to_nat (length (gV nat G)) x).
+      generalize dependent (ix_to_nat (length (gV nat G)) y).
+      intros.
+      (* need a proof that n0 and n have an element in the vertex data map
+         and one that the thing that maps to it is lookup_index, might 
+         be able to derive one of these but I'm tired.
+       *)
+      (* This lemma also needs an additional assumption to be proved
+         so we also need to figure out what it is...should be easy...
+         and then derive it from In (n0,n) (IndexEdges_from_edges G)
+       *)
+      erewrite <- (lookup_inverse n0 (vertex_data_map (gV _ G) 0)) in H.
+      erewrite <- (lookup_inverse n (vertex_data_map (gV _ G) 0)) in H.
+      erewrite <- (lookup_inverse n0 (vertex_data_map (gV _ G) 0)).
+      erewrite <- (lookup_inverse n (vertex_data_map (gV _ G) 0)).
+      apply in_update_edges.
+      apply in_update_edges in H.
+      destruct G; simpl in *.
+      eapply gE_symm0 in H; auto.
+      (* 
+         Can use this to finish off the lemma once the proofs are there
+         rewrite lookup_index_help.
+         rewrite lookup_index_help in H.
+         auto.
+       *)
+      admit.
+  (* this can be transformed close to how in_update_edges works 
+     I think then it's done after everthing is completed*)
+    }
+    {
+      (* same as the other direction  *)
+      admit.
+    }
+Admitted.
+
+
+
+
 Lemma MIS_exists : 
   forall G, 
     exists (l : list (list T)), MIS_set_gGraph G l.
@@ -1399,6 +2962,8 @@ Proof.
     admit.
     unfold I. simpl. replace (0/3) with 0. rewrite Rpower_O.
     auto. fourier. field.
+    unfold Rdiv.
+    field.
   }
   destruct (Nat.le_gt_cases (length (gV T G)) 2).
   {
