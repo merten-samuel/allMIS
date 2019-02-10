@@ -17,12 +17,6 @@ Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
     MIS_set_lGraph G l.
 
 
-(* If l is the set of all maximal independent sets a graph, G, of 
-   type lGraph then l is the set of all maximal independent sets of 
-   the projection of G to type : @GenGraph nat,  Which is a record 
-   of graphs with and explicity list of vertices. 
- *)
-
 Lemma enumerate_sound' : forall x V,
     In x (enumerate V) -> x <= V.
 Proof.
@@ -53,6 +47,12 @@ Proof.
   }
 Qed.
 
+
+(* If l is the set of all maximal independent sets a graph, G, of 
+   type lGraph then l is the set of all maximal independent sets of 
+   the projection of G to type : @GenGraph nat,  Which is a record 
+   of graphs with and explicity list of vertices. 
+ *)
 Lemma All_MIS_preserved_lGraph_to_GenGraph :
   forall (G : lGraph) (l : list (list nat)),
     MIS_set_lGraph G l -> MIS_set_gGraph (GenGraph_of G) l.
