@@ -1341,50 +1341,6 @@ Proof.
   }
 Qed.
 
-
-Section ind_step_min_deg_vert.
-  Variable num_mis : lGraph -> nat.
-  Hypothesis le_sum_variation : forall d G,
-    INR (num_mis G) <= (INR d + 1) * I((lV G)-d-1).
-  
-  Lemma three_le_d_1 : forall d G,
-    INR (num_mis G) <= (INR d+1) * Rpower 3((INR ((lV G)-d-1))/3).
-  Proof.
-    intros.
-    eapply Rle_trans; eauto.
-    apply Rmult_le_compat_l.
-    apply Rplus_le_le_0_compat;
-      [apply pos_INR | fourier].
-    apply I_n_q.
-  Qed.
-    
-  Lemma d_eq_2 : forall G,
-      3 <= INR (lV G)  ->
-      INR(num_mis G) <= 3 * I ((lV G)-3).
-  Proof.
-    intros.
-    specialize (le_sum_variation 2 G).
-    eapply Rle_trans; eauto.
-    simpl.
-    replace (1+ 1+1) with 3 by (simpl; ring).
-    replace ((lV G) - 2 - 1)%nat with ((lV G) - 3)%nat  by (omega).
-    fourier.
-  Qed.
-  
-  Lemma D_eq1 : forall G,
-      3 <= INR (lV G)  ->
-      INR(num_mis G) <= 2 * I ((lV G) - 2).
-  Proof.
-    intros.
-    specialize (le_sum_variation 1 G).
-    eapply Rle_trans; eauto.
-    simpl.
-    replace (1+ 1) with 2 by (simpl; ring).
-    replace ((lV G) - 1 - 1)%nat with ((lV G) - 2)%nat  by (omega).
-    fourier.
-  Qed.
-  
-End ind_step_min_deg_vert.
 (** This next section is contributed by DWJ  **)
 (** We are trying to prove that I is monotonic **)
 Lemma DWJ_helper1:forall n:nat, ((n mod 3 = 0)\/ (n mod 3) = 1 \/ (n mod 3) =2)%nat.
