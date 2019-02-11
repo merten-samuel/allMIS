@@ -1,0 +1,34 @@
+all_MIS_complete.vo all_MIS_complete.glob all_MIS_complete.v.beautified: all_MIS_complete.v graph_basics.vo lex_order.vo graphs_nondep.vo MIS_basics.vo all_MIS.vo all_MIS_sound.vo
+all_MIS_complete.vio: all_MIS_complete.v graph_basics.vio lex_order.vio graphs_nondep.vio MIS_basics.vio all_MIS.vio all_MIS_sound.vio
+all_MIS_Refine.vo all_MIS_Refine.glob all_MIS_Refine.v.beautified: all_MIS_Refine.v graph_basics.vo MIS_basics.vo all_MIS.vo wf_combinators.vo index.vo all_MIS_sound.vo all_MIS_complete.vo all_MIS_unique.vo
+all_MIS_Refine.vio: all_MIS_Refine.v graph_basics.vio MIS_basics.vio all_MIS.vio wf_combinators.vio index.vio all_MIS_sound.vio all_MIS_complete.vio all_MIS_unique.vio
+all_MIS_sound.vo all_MIS_sound.glob all_MIS_sound.v.beautified: all_MIS_sound.v graph_basics.vo lex_order.vo graphs_nondep.vo MIS_basics.vo all_MIS.vo
+all_MIS_sound.vio: all_MIS_sound.v graph_basics.vio lex_order.vio graphs_nondep.vio MIS_basics.vio all_MIS.vio
+all_MIS_unique.vo all_MIS_unique.glob all_MIS_unique.v.beautified: all_MIS_unique.v graph_basics.vo lex_order.vo graphs_nondep.vo MIS_basics.vo all_MIS.vo all_MIS_sound.vo
+all_MIS_unique.vio: all_MIS_unique.v graph_basics.vio lex_order.vio graphs_nondep.vio MIS_basics.vio all_MIS.vio all_MIS_sound.vio
+all_MIS.vo all_MIS.glob all_MIS.v.beautified: all_MIS.v graph_basics.vo lex_order.vo graphs_nondep.vo MIS_basics.vo
+all_MIS.vio: all_MIS.v graph_basics.vio lex_order.vio graphs_nondep.vio MIS_basics.vio
+eqtype.vo eqtype.glob eqtype.v.beautified: eqtype.v
+eqtype.vio: eqtype.v
+explicit_graph.vo explicit_graph.glob explicit_graph.v.beautified: explicit_graph.v moon_lemma.vo graph_basics.vo all_MIS_unique.vo
+explicit_graph.vio: explicit_graph.v moon_lemma.vio graph_basics.vio all_MIS_unique.vio
+fintype.vo fintype.glob fintype.v.beautified: fintype.v eqtype.vo
+fintype.vio: fintype.v eqtype.vio
+graph_basics.vo graph_basics.glob graph_basics.v.beautified: graph_basics.v index.vo
+graph_basics.vio: graph_basics.v index.vio
+graphs_nondep.vo graphs_nondep.glob graphs_nondep.v.beautified: graphs_nondep.v lex_order.vo
+graphs_nondep.vio: graphs_nondep.v lex_order.vio
+index.vo index.glob index.v.beautified: index.v eqtype.vo fintype.vo
+index.vio: index.v eqtype.vio fintype.vio
+lex_order.vo lex_order.glob lex_order.v.beautified: lex_order.v
+lex_order.vio: lex_order.v
+lGraphMoonTheorem.vo lGraphMoonTheorem.glob lGraphMoonTheorem.v.beautified: lGraphMoonTheorem.v explicit_graph.vo graph_basics.vo graphs_nondep.vo all_MIS.vo all_MIS_complete.vo
+lGraphMoonTheorem.vio: lGraphMoonTheorem.v explicit_graph.vio graph_basics.vio graphs_nondep.vio all_MIS.vio all_MIS_complete.vio
+MIS_basics.vo MIS_basics.glob MIS_basics.v.beautified: MIS_basics.v graph_basics.vo lex_order.vo graphs_nondep.vo
+MIS_basics.vio: MIS_basics.v graph_basics.vio lex_order.vio graphs_nondep.vio
+moon_lemma.vo moon_lemma.glob moon_lemma.v.beautified: moon_lemma.v MIS_basics.vo graph_basics.vo
+moon_lemma.vio: moon_lemma.v MIS_basics.vio graph_basics.vio
+test_cases.vo test_cases.glob test_cases.v.beautified: test_cases.v graph_basics.vo all_MIS.vo index.vo
+test_cases.vio: test_cases.v graph_basics.vio all_MIS.vio index.vio
+wf_combinators.vo wf_combinators.glob wf_combinators.v.beautified: wf_combinators.v
+wf_combinators.vio: wf_combinators.v
