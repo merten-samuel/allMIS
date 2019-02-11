@@ -1105,7 +1105,16 @@ Lemma MIS_bounds_1_verts :
     MIS_set_gGraph G l -> 
     ((gV _ G) = t::nil) -> length l = 1.
 Proof.
-  intros. inversion H.
+  intros G l t H H2.
+(*  generalize (MIS_Bounds_1_verts_aux2 G l (
+  
+  intros. inversion H; subst.
+  assert (Hx: MaximalIndSet_E G (t::nil)).
+  { admit. }
+  specialize (H3 _ Hx).
+*)
+
+  
 (*
   destruct l.
   generalize MIS_Bounds_1_verts_aux1; intros.
@@ -1525,6 +1534,30 @@ Require Import Omega.
 Require Import Fourier.
 Open Scope R_scope.
 
+Import ListNotations.
+
+Lemma Bad_Bad: forall G (x:T), ((length (gV T (removeVerts T Tdec G [x]))) <= length (gV T G))%nat.
+Proof.    
+      unfold removeVerts.
+      simpl.
+      intros.
+      induction (gV T G).
+      simpl.
+      omega.
+      simpl.
+      destruct (Tdec x a).
+      { 
+        assert ((length l) <= S (length l))%nat.
+        omega.
+        apply Nat.le_trans with (m:=length l).
+        exact IHl.
+        exact H.
+      }
+      {
+        simpl.
+        omega.  (* We love omega.   How did it just solve that! *)
+      }
+Qed.
 
 Lemma MIS_Bounds :
   forall G (l : list (list T)),
@@ -1535,10 +1568,172 @@ Proof.
   {
     intros. rewrite H. replace (I 0) with 1.
     simpl.
+    inversion H0.
+    assert (forall (x:T) (l1:list T), List.In l1 l -> ~List.In x l1).
+    {
+      intros.
+      assert (MaximalIndSet_E G l1).
+      apply H1.
+      exact H4.
+      assert ((gV T G) = []).
+      apply length_zero_iff_nil.
+      exact H.
+      inversion H5.
+      inversion H7.
+
+      
+      unfold valid_E in H9.
+      rewrite H6 in H9.
+      intro.
+      assert (List.In x [] = False).
+      simpl.
+      reflexivity.
+      assert (List.In x l1 -> List.In x []).
+      apply H9.
+      rewrite H12 in H13.
+      apply H13.
+      exact H11.
+    }
+    assert (forall l1:list T, List.In l1 l -> l1 = []).
+    {
+      intros.
+      induction l1.
+      reflexivity.
+      assert (~List.In a (a :: l1)).
+      apply H4.
+      exact H5.
+      simpl in H6.
+      assert (a=a \/ List.In a l1).
+      left; reflexivity.
+      contradiction.
+    }
+    assert (length l <=1)%nat.
+    {
+      induction l.
+      {
+        simpl.
+        omega.
+      }
+      {
+        simpl.
+        assert (a=[]).
+        apply H5.
+        simpl.
+        left;reflexivity.
+        inversion H2.
+        assert (l = []).
+        {
+          induction l.
+          reflexivity.
+          assert (a0 = []).
+          apply H5.
+          simpl.
+          right; left; reflexivity.
+          rewrite H6 in H9.
+          rewrite H11 in H9.
+          assert (InA (equivlistA eq) [] ([] :: l)).
+          constructor.
+          constructor.
+          intro; exact H12.
+          intro; exact H12.
+          contradiction.
+        }
+        rewrite H11.
+        simpl.
+        omega.
+      }
+      
+    }
+    SearchAbout INR.
+    replace 1 with (INR 1).
+    apply le_INR.
+    exact H6.
+    simpl.
+    reflexivity.
+    unfold I.
+    assert ((0 mod 3) = 0)%nat.
+    simpl.
+    reflexivity.
+    rewrite H1.
+    simpl.
+    assert (0/3 = 0).
+    field.
+    rewrite H2.
+    symmetry.
+    SearchAbout Rpower.
+    apply Rpower_O.
+    fourier.
+    }
+    (* unfold mod.
+    
+        rewrite 
+      induction 
+      apply 
+      rewrite H12 in H9.
+      assert (List.In x (gV T G) ->
+     ~ List.In x l1 ->
+     exists y : T,
+       List.In y (gV T G) /\ List.In y l1 /\ List.In (x, y) (gE T G)).
+      apply H7.
+      destruct H8.
+
+    assert (MIS_set_gGraph G [[]]).
+    apply mkMIS_set.
+    {
+      intros.
+      simpl in H1.
+      destruct H1.
+      rewrite <-H1.
+      simpl.
+      constructor.
+      constructor.
+      unfold valid_E.
+      intros.
+      simpl in H2.
+      contradiction.
+      unfold independent_E.
+      intros.
+      simpl in H2.
+      contradiction.
+      intros.
+      assert (exists n:nat, (n < length(gV T G))%nat /\ nth n (gV T G) x0 = x0).
+      apply In_nth.
+      exact H2.
+      destruct H4.
+      destruct H4.
+      assert (x1 < 0)%nat.
+      rewrite <-H.
+      exact H4.
+      {
+        clear -H6.
+        omega.
+      }
+      contradiction.
+    }
+    constructor.
+    intro.
+    inversion H1.
+    constructor.
+    intros.
+    constructor.
+    constructor.
+    intro.
+    contradiction.
+    inversion.
+    unfold InA. 
+
+    }
+    {
+     constructor.
+    }
+    {
+       
+    simpl.
+    Basically, l = [[]] ).
     admit.
     unfold I. simpl. replace (0/3) with 0. rewrite Rpower_O.
-    auto. fourier. field.
-  }
+    auto. fourier. field.*)
+  
   destruct (Nat.le_gt_cases (length (gV T G)) 2).
   {
     inversion H1. clear H1. (* length = 2 *)
@@ -1549,9 +1744,8 @@ Proof.
       destruct l_dest. simpl in H3. omega. destruct l_dest. simpl in H3.
       eapply Rle_trans.
       apply le_INR. eapply MIS_Bounds_2_verts; eauto.
-      unfold I. simpl. replace (0 / 3) with 0.
-      replace ((1 + 1 - 2) / 3) with 0 by field.
-      rewrite Rpower_O. fourier. fourier. field.
+      unfold I. simpl. replace ((1+1-2) / 3) with 0 by field.
+      rewrite Rpower_O. fourier. fourier. 
       simpl in H3. omega.
     }
     clear H1 H2. inversion H3. 
@@ -1589,15 +1783,29 @@ Proof.
       replace (gV T (removeVerts _ Tdec G (x ::Datatypes.nil))) with
     (removeList _ Tdec (gV T G) (x::Datatypes.nil)) by auto.
     simpl. apply remove_length_in. auto.
-    apply I_monontonic2.
-    simpl.
-    apply remove_length.
+    assert (forall x:T, (length (gV T (removeVerts T Tdec G [x]))) <= length (gV T G))%nat.
+    { 
+      unfold removeVerts.
+      simpl.
+      induction (gV T G).
+      simpl.
+      intro.
+      reflexivity.
+      intros.
+      apply remove_length.
+    }
+(*** DWJ to here. *)
+    apply I_monontonic2.  
+    apply H8.
   }
   destruct H2.
-  {
+  { (* Vertices of degree 1. *)
     do 3 destruct H2. destruct H4. destruct H5.
     destruct x0. simpl in H6. omega.
-    destruct x0. 2:{ simpl in H6. omega. }
+    destruct x0. 
+    Focus 2.
+    { simpl in H6. omega. }
+    Unfocus.
     destruct (MIS_exists (removeVerts T Tdec G (t :: Datatypes.nil))).
     destruct (MIS_exists (removeVerts T Tdec G (t :: genNeighborhood G t))).
     eapply Rle_trans. apply le_INR.
@@ -1610,18 +1818,34 @@ Proof.
     apply Rle_trans with
       (r2 := I (length (gV T (removeVerts T Tdec G (t :: Datatypes.nil))))).
     apply H.
-    admit.
-    admit.
-    apply Rle_trans with
-      (r2 := I (length (gV T (removeVerts T Tdec G (t :: genNeighborhood G t))))).
+    unfold neighborhood_E in H4.
+    assert (List.In t (gV T G)).
+    assert (List.In t [t] <-> List.In (t,x) (gE T G)).
+    apply H4.
+    assert (List.In t [t]).
     simpl.
-    admit.
-    (* Nate's inequalities *)
-    admit.    
-    admit.
-    replace (I (length (gV T G) - 2) + I (length (gV T G) - 2))
-            with (2 * I (length (gV T G) - 2)) by ring.
-    apply I_lower_bound_1; auto.
+    left;reflexivity.
+    assert (List.In (t, x) (gE T G)).
+    apply H9.
+    exact H10.
+    apply gE_subset_l with (y:=x).
+    exact H11.
+    SearchAbout remove.
+    unfold removeVerts.
+    simpl.
+    SearchAbout remove.
+    assert ((length (remove Tdec t (gV T G))) < length (gV T G))%nat.
+    
+    apply remove_length_in.
+    exact H9.
+    omega.
+    exact H7.
+    admit. (* Doesn't look to be true! *)
+    auto.
+    admit. (* This is true, since t has degree 1 *)
+    replace (I (length (gV T G) - 2) + I (length (gV T G) - 2)) with (2*I (length (gV T G) - 2)) by field. 
+    apply I_lower_bound_1.
+    omega.
   }
   destruct H2.
   {
@@ -1639,7 +1863,7 @@ Proof.
     admit.  
     apply H. admit. eauto. eauto. admit.
     (* Nate's inequalities *)
-    apply I_lower_bound_2; auto.
+    admit.
   }
   { (* This needs the finished proof from Wood's paper *)
     admit.
