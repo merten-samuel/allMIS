@@ -7,8 +7,10 @@ Open Scope R_scope.
 
 Definition I (n : nat) : R :=
   if eq_nat_dec (n mod 3) 0 then Rpower 3 ((INR n) / 3)
-  else if eq_nat_dec (n mod 3) 1 then 4 * (Rpower 3 ((INR n - 4)/3))
-       else 2 * (Rpower 3 ((INR (n - 2)) / 3)).
+  else if eq_nat_dec (n mod 3) 1 then 4 * (Rpower 3 (((INR n) - 4)/3))
+       else 2 * (Rpower 3 (((INR n) - 2) / 3)).
+
+
 
 Lemma mod3_eq_2 : forall (a : nat),
     (a mod 3 <> 0 -> a mod 3 <> 1 -> a mod 3 = 2)%nat.
@@ -55,13 +57,22 @@ Proof.
     rewrite Rpower_1; prove_sup. ring.
   } assert (H1 := Nat.mod_le n 3).
   rewrite (mod3_eq_2 _ n0 n1) in H1.
-  rewrite plus_comm. rewrite <- Nat.add_sub_assoc; [|apply H1; auto].
-  rewrite plus_comm. rewrite plus_INR. rewrite H0. unfold Rdiv.
-  rewrite (Rmult_plus_distr_r _ 3 (/3)).
-  rewrite Rinv_r; discrR.
-  rewrite Rpower_plus.
-  rewrite Rpower_1; prove_sup. ring.
+  rewrite plus_comm. replace (INR (3 + n)) with (3 + (INR n)).
+  replace ((3 + INR n - 2) / 3) with ((3/3)+(INR n -2)/3).
+  replace (Rpower 3 (3 / 3 + (INR n - 2) / 3)) with ((Rpower 3 (3/3))*(Rpower 3 ((INR n - 2) / 3) )). 
+  replace (3/3) with (1).
+  rewrite Rpower_1.
+  field.
+  fourier.
+  field.
+  symmetry.
+  apply Rpower_plus.
+  field.
+  replace (3) with (INR 3) at 1.
+  symmetry.
+  apply plus_INR.
 Qed.
+
 
 Require Import Wellfounded.
 Theorem strong_induction : forall (P : nat -> Prop),
@@ -109,7 +120,8 @@ Proof.
     rewrite H2. apply Rle_Rpower_l; [|split]; fourier.
   } destruct H0.
   { inversion H0; subst. unfold I; simpl.
-    unfold Rdiv. rewrite Rmult_0_l.
+    unfold Rdiv. replace (1+1-2) with 0 by field.
+    rewrite Rmult_0_l.
     rewrite Rpower_O; prove_sup. rewrite Rmult_1_r.
     rewrite <- Rpower_mult. assert (Rpower 3 (INR 2) = 9).
     rewrite Rpower_pow; prove_sup. field.
@@ -118,10 +130,11 @@ Proof.
     rewrite Rpower_pow; prove_sup; field. rewrite H2.
     rewrite Rpower_mult. simpl.
     field_simplify.
-    replace (1 + 1 + 1) with 3; [|ring].
+    replace (2/1) with 2 by field.
+    replace (1 +1 + 1) with 3; [|ring].
     replace (3 * / 3) with 1; [|field].
     rewrite Rpower_1; [auto | fourier].
-    rewrite H2. apply Rle_Rpower_l; [|split]; fourier.
+    rewrite H2 at 1. apply Rle_Rpower_l; [|split]; fourier. 
   } destruct H0 as [m H0]. assert (m <= n)%nat. omega.
   apply H in H1. rewrite H0. rewrite <- I_unfold.
   unfold Rdiv. rewrite plus_INR. rewrite Rmult_plus_distr_r.
@@ -323,15 +336,16 @@ Proof.
       }
       rewrite H2.
       rewrite Rpower_Ropp.
-      clear H2.
-      rewrite Rpower_1; prove_sup.
+      (* clear H2.
+      rewrite Rpower_1; prove_sup.*)
       apply Rle_refl.
     }
     destruct H0.
     {
-      rewrite H0.
+    rewrite H0.
       unfold I; simpl.
       unfold Rdiv. 
+      replace (1+1-2) with 0 by ring.
       rewrite Rmult_0_l.
       rewrite Rpower_O; prove_sup. rewrite Rmult_1_r.
       rewrite <- Rpower_mult.
@@ -363,46 +377,22 @@ Proof.
     {
       destruct H0 as [m H0]. assert (m <= n)%nat. omega.
       apply H in H1. rewrite H0. rewrite <- I_unfold.
-      unfold Rdiv. rewrite plus_INR.
+      rewrite plus_INR.
       ring_simplify.
       replace (INR m + INR 3 - 4) with (INR m - 4 +  INR 3)
         by (simpl; ring).
-      rewrite Rmult_plus_distr_r.
-      rewrite Rpower_plus. simpl. 
-      replace (1 + 1 + 1) with 3; [|ring].
-      replace (3 * / 3) with 1; [|field].
-      replace (-(4) * / 3) with (-(4 * / 3))
-        by (simpl; ring).
-      rewrite Rpower_1; [ auto | fourier ].
+      rewrite Rdiv_plus_distr.
+      replace (INR 3) with 3 by (simpl; ring).
+      rewrite Rpower_plus. 
+      replace (3 /3) with 1 by field.
+      simpl. rewrite Rpower_1; try fourier.
       ring_simplify.
-      replace 12 with ( 3 * 4) by (simpl; ring).
-      pose proof (Rmult_le_compat_l 3 (4 * Rpower 3 ((INR m - 4) * / 3))
-                                    (I m)). 
-      apply H2 in H1; try fourier.
-      replace (3 * (4 * Rpower 3 ((INR m - 4) * / 3)) <= 3 * I m) with
-          (3 * 4 * Rpower 3 ((INR m - 4) * / 3) <= 3 * I m) in H1
-        by (rewrite Rmult_assoc; auto).      
-      exact H1.
+      replace 12 with (3 * 4) by ring.
+      fourier.
     }
   }
 Qed.
 
-Section ind_step_min_deg_vert.
-  Variable num_mis : lGraph -> nat.
-  Hypothesis le_sum_variation : forall d G,
-    INR (num_mis G) <= (INR d + 1) * I((lV G)-d-1).
-  
-  Lemma three_le_d_1 : forall d G,
-    INR (num_mis G) <= (INR d+1) * Rpower 3((INR ((lV G)-d-1))/3).
-  Proof.
-    intros.
-    eapply Rle_trans; eauto.
-    apply Rmult_le_compat_l.
-    apply Rplus_le_le_0_compat;
-      [apply pos_INR | fourier].
-    apply I_n_q.
-  Qed.
-    
 (* Dr Juedes Contribution *)
 Theorem exp_vs_3: forall x:R, 0<x -> exp x <= Rpower 3 x.
 Proof.
@@ -659,7 +649,7 @@ reflexivity.
 assert ((Rpower 3 (INR 2)) = 3^2).
 apply Rpower_pow.
 fourier.
-rewrite <-H1 at 2.
+replace (INR 2) with 2 in H2 by (simpl; ring).
 rewrite H2.
 unfold pow.
 fourier.
@@ -1096,7 +1086,10 @@ Proof.
       inversion H0.
       subst.
       unfold I; simpl.
-      replace (0/3) with 0 by field.
+      replace (0/3) with 0 by field. 
+      replace (2-2) with (0) by ring. 
+      replace (0/3) with (0) by field.
+      replace ((1 + 1 - 2) / 3) with 0 by field.
       rewrite Rpower_O; fourier.
     }
     destruct H0.
@@ -1110,6 +1103,261 @@ Proof.
     omega.
   Qed.
 
+
+Lemma I_lower_bound_1 :
+  forall n,
+    (3 <= n)%nat -> 
+    2 * I (n - 2) <= I n.
+Proof.
+  clear.
+  intros.
+  induction n using strong_induction.
+  {
+    omega.
+  }
+  inversion H.
+  subst.
+  simpl.
+  unfold I.
+  simpl.
+  {
+    replace ((1-4)/3) with (-(1)) by field.
+    rewrite Rpower_Ropp.
+    replace ((1 + 1 + 1)/3) with 1 by field.
+    rewrite Rpower_1;
+      fourier.
+  }
+  subst.
+  clear H.
+  assert (H1 : (S n = 1 \/ S n = 2 \/ exists m, S n = ( m + 3) )%nat).
+  {
+    do 2 (destruct n;
+          auto); do 2 right;
+      exists n; omega.
+  }
+  destruct H1; subst.
+  {
+    exfalso.
+    omega.
+  }
+  destruct H.
+  {
+    exfalso.
+    omega.
+  }
+  destruct H.
+  rewrite H.
+  assert (x <= n)%nat by omega.
+  assert (3 <= x \/ x = 0 \/ x = 1 \/ x = 2 \/ x = 3)%nat.
+  omega.
+  destruct H3.
+  {
+    apply H0 in H1; auto.
+    replace (x + 3 - 2)%nat with (x - 2 + 3)%nat by 
+        (clear - H3;
+         omega).
+    rewrite <- I_unfold;
+      auto.
+    rewrite <- I_unfold.
+    rewrite <- Rmult_assoc.
+    apply Rmult_le_compat; try fourier; auto.
+    assert (0 <= x - 2)%nat by
+        omega.
+    {
+      apply Rmult_le_pos; try fourier.
+      apply I_pos; auto.
+    }
+  }
+  destruct H3; subst.
+  {
+    simpl.
+    unfold I.
+    simpl.
+    replace ((1-4)/3) with (-(1)) by field.
+    rewrite Rpower_Ropp.
+    replace ((1 + 1 + 1)/3) with 1 by field.
+    rewrite Rpower_1;
+      fourier.
+  }
+  {
+    destruct H3; subst.
+    {
+      unfold I; simpl.
+      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
+      replace ((1 + 1 - 2) / 3) with 0 by field.
+      replace (0 / 3) with 0 by field.
+      rewrite Rpower_O; fourier.
+    }
+    destruct H3; subst; unfold I; simpl; try fourier.
+    {
+      apply Rmult_le_compat_l; try fourier.
+      apply Rle_Rpower; fourier.
+    }
+    {
+      replace ((1+ 1+1 + 1 + 1 + 1)/3) with 2 by field.
+      replace ((1 + 1 + 1 + 1 - 4)/3) with
+          0 by field.
+      rewrite Rpower_O; try fourier.
+      replace 2 with (INR 2) by (simpl; ring).
+      rewrite Rpower_pow; try fourier.
+      simpl.
+      fourier.
+    }
+  }
+Qed.
+
+Lemma I_lower_bound_2 :
+  forall n,
+    (3 <= n)%nat -> 
+    I (n - 1) + I (n - 4) <= I n.
+Proof.
+  clear.
+  intros.
+  intros.
+  induction n using strong_induction.
+  {
+    omega.
+  }
+  inversion H.
+  subst.
+  simpl.
+  unfold I.
+  simpl.
+  {
+    replace (0 /3) with 0 by field.
+    rewrite Rpower_O; try fourier.
+    replace ((1 + 1 + 1)/3) with 1 by field.
+    replace ((1+1-2)/3) with 0 by field.
+    rewrite Rpower_O.
+    rewrite Rpower_1.
+    all: fourier.
+  }
+  subst.
+  clear H.
+  assert (H1 : (S n = 1 \/ S n = 2 \/ exists m, S n = ( m + 3) )%nat).
+  {
+    do 2 (destruct n;
+          auto); do 2 right;
+      exists n; omega.
+  }
+  destruct H1; subst.
+  {
+    exfalso.
+    omega.
+  }
+  destruct H.
+  {
+    exfalso.
+    omega.
+  }
+  destruct H.
+  rewrite H.
+  assert (x <= n)%nat by omega.
+  assert (4 <= x \/ x = 0 \/ x = 1 \/ x = 2 \/ x = 3 \/ x = 4)%nat.
+  omega.
+  destruct H3.
+  {
+    apply H0 in H1; auto.
+    replace (x + 3 - 1)%nat with (x - 1 + 3)%nat by 
+        (clear - H3;
+         omega).
+    rewrite <- I_unfold;
+      auto.
+    rewrite <- I_unfold.
+    replace (x + 3 - 4)%nat with (x - 4 + 3)%nat by 
+        (clear - H3;
+         omega).
+    rewrite <- I_unfold.
+    ring_simplify.
+    fourier.
+    omega.
+  }
+  destruct H3; subst.
+  {
+    simpl.
+    unfold I.
+    simpl.
+    replace ((0/3)) with (0) by field.
+    rewrite Rpower_O; try fourier.
+    replace ((1 + 1 + 1)/3) with 1 by field.
+    replace ((1+1-2)/3) with 0 by field.
+    rewrite Rpower_O.
+    rewrite Rpower_1.
+    all: fourier.
+  }
+  {
+    destruct H3; subst.
+    {
+      unfold I; simpl.
+      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
+      replace (0 / 3) with 0 by field.
+      replace ((1 + 1 + 1)/3) with 1 by field.
+      rewrite Rpower_1;
+        try fourier.
+      rewrite Rpower_O; fourier.
+    }
+    destruct H3; subst; unfold I; simpl; try fourier.
+    {
+      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
+      replace ((1 + 1 + 1)/3) with
+          1 by field.
+      replace ((1 - 4)/3) with (-(1)) by field.
+      replace (0 / 3) with 0 by field.        
+      rewrite Rpower_O; try fourier.
+      ring_simplify.
+      rewrite Rpower_Ropp.
+      rewrite Rpower_1.
+      replace (((1 + 1 + 1 + 1 + 1 - 2) / 3)) with 1 by field.  
+      rewrite Rpower_1;
+      fourier.
+      fourier.
+    }
+    destruct H3; subst;
+      simpl.
+    {
+      replace ((1+ 1+1 + 1 + 1 + 1)/3) with 2 by field.
+      replace ((1+1-2)/3) with 0 by field.
+      replace ((1 + 1+ 1 + 1 + 1 -2)/3) with 1 by field.
+      rewrite Rpower_O.
+      rewrite Rpower_1.
+      replace 2 with (INR 2) by (simpl; ring).
+      rewrite Rpower_pow; try fourier.
+      simpl.
+      all: 
+      fourier.
+    }
+    {
+      replace ((1+ 1+1 + 1 + 1 + 1)/3) with 2 by field.
+      replace ((1+ 1+1 + 1 + 1 + 1 + 1-4)/3) with (1) by field.
+      replace ((1 + 1 + 1)/3) with
+          1 by field.
+      rewrite Rpower_1; try fourier.
+      ring_simplify.
+      replace 2 with (INR 2) by (simpl; ring).
+      rewrite Rpower_pow; try fourier.
+      simpl.
+      fourier.
+    }
+  }
+Qed.
+
+
+Section ind_step_min_deg_vert.
+  Variable num_mis : lGraph -> nat.
+  Hypothesis le_sum_variation : forall d G,
+    INR (num_mis G) <= (INR d + 1) * I((lV G)-d-1).
+  
+  Lemma three_le_d_1 : forall d G,
+    INR (num_mis G) <= (INR d+1) * Rpower 3((INR ((lV G)-d-1))/3).
+  Proof.
+    intros.
+    eapply Rle_trans; eauto.
+    apply Rmult_le_compat_l.
+    apply Rplus_le_le_0_compat;
+      [apply pos_INR | fourier].
+    apply I_n_q.
+  Qed.
+    
   Lemma d_eq_2 : forall G,
       3 <= INR (lV G)  ->
       INR(num_mis G) <= 3 * I ((lV G)-3).
@@ -1136,329 +1384,487 @@ Proof.
     fourier.
   Qed.
   
-  Lemma I_lower_bound_1 :
-    forall n,
-      (3 <= n)%nat -> 
-      2 * I (n - 2) <= I n.
-  Proof.
-    clear.
-    intros.
-    induction n using strong_induction.
-    {
-      omega.
-    }
-    inversion H.
-    subst.
-    simpl.
-    unfold I.
-    simpl.
-    {
-      replace ((1-4)/3) with (-(1)) by field.
-      rewrite Rpower_Ropp.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
-      fourier.
-    }
-    subst.
-    clear H.
-    assert (H1 : (S n = 1 \/ S n = 2 \/ exists m, S n = ( m + 3) )%nat).
-    {
-      do 2 (destruct n;
-            auto); do 2 right;
-        exists n; omega.
-    }
-    destruct H1; subst.
-    {
-      exfalso.
-      omega.
-    }
-    destruct H.
-    {
-      exfalso.
-      omega.
-    }
-    destruct H.
-    rewrite H.
-    assert (x <= n)%nat by omega.
-    assert (3 <= x \/ x = 0 \/ x = 1 \/ x = 2 \/ x = 3)%nat.
-    omega.
-    destruct H3.
-    {
-      apply H0 in H1; auto.
-      replace (x + 3 - 2)%nat with (x - 2 + 3)%nat by 
-          (clear - H3;
-        omega).
-      rewrite <- I_unfold;
-      auto.
-      rewrite <- I_unfold.
-      rewrite <- Rmult_assoc.
-      apply Rmult_le_compat; try fourier; auto.
-      assert (0 <= x - 2)%nat by
-      omega.
-      {
-        apply Rmult_le_pos; try fourier.
-        apply I_pos; auto.
-      }
-    }
-    destruct H3; subst.
-    {
-      simpl.
-      unfold I.
-      simpl.
-      replace ((1-4)/3) with (-(1)) by field.
-      rewrite Rpower_Ropp.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
-      fourier.
-    }
-    {
-      destruct H3; subst.
-      {
-      unfold I; simpl.
-      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
-      replace (0 / 3) with 0 by field.
-      rewrite Rpower_O; fourier.
-      }
-      destruct H3; subst; unfold I; simpl; try fourier.
-      {
-        replace ((1 + 1 + 1 + 1 + 1 + 1)/3) with
-            2 by field.
-      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
-      replace (0 / 3) with 0 by field.        
-      rewrite Rpower_O; try fourier.
-      ring_simplify.
-      replace 2 with (INR 2) by auto.
-      rewrite Rpower_pow; simpl; fourier.
-      }
-    }
-  Qed.
-  
-  Lemma I_lower_bound_2 :
-    forall n,
-      (3 <= n)%nat -> 
-      I (n - 1) + I (n - 4) <= I n.
-  Proof.
-    clear.
-    intros.
-    intros.
-    induction n using strong_induction.
-    {
-      omega.
-    }
-    inversion H.
-    subst.
-    simpl.
-    unfold I.
-    simpl.
-    {
-      replace (0 /3) with 0 by field.
-      rewrite Rpower_O; try fourier.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
-      fourier.
-    }
-    subst.
-    clear H.
-    assert (H1 : (S n = 1 \/ S n = 2 \/ exists m, S n = ( m + 3) )%nat).
-    {
-      do 2 (destruct n;
-            auto); do 2 right;
-        exists n; omega.
-    }
-    destruct H1; subst.
-    {
-      exfalso.
-      omega.
-    }
-    destruct H.
-    {
-      exfalso.
-      omega.
-    }
-    destruct H.
-    rewrite H.
-    assert (x <= n)%nat by omega.
-    assert (4 <= x \/ x = 0 \/ x = 1 \/ x = 2 \/ x = 3 \/ x = 4)%nat.
-    omega.
-    destruct H3.
-    {
-      apply H0 in H1; auto.
-      replace (x + 3 - 1)%nat with (x - 1 + 3)%nat by 
-          (clear - H3;
-        omega).
-      rewrite <- I_unfold;
-      auto.
-      rewrite <- I_unfold.
-      replace (x + 3 - 4)%nat with (x - 4 + 3)%nat by 
-          (clear - H3;
-        omega).
-      rewrite <- I_unfold.
-      ring_simplify.
-      fourier.
-      omega.
-    }
-    destruct H3; subst.
+End ind_step_min_deg_vert.
+(** This next section is contributed by DWJ  **)
+(** We are trying to prove that I is monotonic **)
+Lemma DWJ_helper1:forall n:nat, ((n mod 3 = 0)\/ (n mod 3) = 1 \/ (n mod 3) =2)%nat.
+Proof.
+  intros.
+  assert ((n mod 3) < 3)%nat.
+  apply Nat.mod_small_iff.
+  omega.
+  apply Nat.mod_mod.
+  omega.
+  assert (forall n:nat, (n =0)\/(n = 1)\/(n=2)\/(n>2))%nat.
+  intro.
+  omega.
+  assert (((n mod 3) =0)\/((n mod 3) = 1)\/((n mod 3) =2)\/((n mod 3) >2))%nat.
+  apply H0.
+  destruct H1.
+  left;rewrite H1; reflexivity.
+  destruct H1.
+  right;left;rewrite H1;reflexivity.
+  destruct H1.
+  right;right;rewrite H1;reflexivity.
+  omega.
+Qed.
+
+Lemma DWJ_helper2: (INR 0) /3 = 0.
+Proof.
+simpl.
+field.
+Qed.
+
+Lemma DWJ_helper3: forall n:nat, 0<= (INR n) /3.
+Proof.
+intros.
+assert (0<=INR n).
+apply pos_INR.
+unfold Rdiv.
+apply Rmult_le_pos.
+exact H.
+fourier.
+Qed.
+
+Lemma DWJ_helper4: 0 < Rpower 3 (1 / 3).
+Proof.
+apply Rlt_trans with (r2:=1 + (1/3)).
+fourier.
+apply three_x_1.
+fourier.
+Qed.
+
+Lemma DWJ_helper5: forall x:R, 0<x -> 0< Rpower 3 (x/3).
+Proof.
+intros.
+apply Rlt_trans with (r2:=1 + (x/3)).
+fourier.
+apply three_x_1.
+fourier.
+Qed.
+
+
+
+Lemma Monontonic_helper: forall n:nat, I n < I (S n).
+Proof.
+intros.
+unfold I.
+
+assert (  n mod 3 = 0%nat \/ n mod 3 = 1%nat \/ n mod 3 = 2%nat).
+apply DWJ_helper1.
+
+destruct H.
+{
+  rewrite H.
+  assert ((S n mod 3) = 1)%nat.
+  replace (S n) with (n+1)%nat.
+SearchAbout Nat.modulo.
+rewrite Nat.add_mod.
+rewrite H.
+simpl.
+reflexivity.
+omega.
+omega.
+rewrite H0.
+simpl.
+induction n.
+{
+  rewrite DWJ_helper2.
+  replace (1-4) with (-3).
+  replace (Rpower 3 0) with 1.
+  replace (-3/3) with (-1).
+  replace (Rpower 3 (-1)) with (/Rpower 3 1).
+  replace (Rpower 3 1) with 3.
+  fourier.
+  symmetry.
+  apply Rpower_1.
+  fourier.
+  symmetry.
+  apply Rpower_Ropp.
+  field.
+  symmetry.
+  apply Rpower_O.
+  fourier.
+  field.
+  }
+  {
+    replace (INR (S n)) with ((INR n) + 1).
+    replace (INR n + 1 + 1 -4) with (INR n -2).
+    replace ((INR n +1)/3) with ((INR n)/3 + 1/3).
+    replace ((INR n -2)/3) with (((INR n)/3) + (-2/3)).
+    replace (Rpower 3 (INR n / 3 + 1 / 3)) with  ((Rpower 3 ((INR n)/3))* (Rpower 3 (1/3))). 
+    assert ((Rpower 3 (((INR n) / 3) + (-2 / 3))) = ((Rpower 3 ((INR n)/3) ) * (Rpower 3 (-2/3)))).
+    apply Rpower_plus with (x:=(INR n)/3) (y:= (-2/3)) (z:=3).
+    rewrite H1.
+    replace (4 * (Rpower 3 (INR n / 3) * Rpower 3 (-2 / 3))) with (Rpower 3 (INR n / 3)*(4*Rpower 3 (-2 / 3))).
+    apply Rfourier_lt.
+    assert ((Rpower 3 (1/3)) = (3*(Rpower 3 (-2/3)))).
+    replace (3) with (Rpower 3 1) at 3.
+    replace ((Rpower 3 1) * (Rpower 3 (-2/3))) with (Rpower 3 (1 + (-2/3))).
+    replace (1+(-2/3)) with (1/3).
+    reflexivity.
+    field.
+    apply Rpower_plus.
+    apply Rpower_1.
+    fourier.
+    rewrite H2.
+    rewrite Rmult_comm.
+    assert (4 * Rpower 3 (-2 / 3) = (Rpower 3 (-2/3))*4).
+    rewrite Rmult_comm.
+    reflexivity.
+    rewrite H3.
+    apply Rfourier_lt.
+    fourier.
+    replace (-2/3) with (-(2/3)).
+    rewrite Rpower_Ropp.
+    replace (/Rpower 3 (2/3)) with (1*/(Rpower 3 (2/3))).
+    apply Rlt_mult_inv_pos.
+    fourier.
+    assert (1+(2/3) < (Rpower 3 (2/3))).
+    apply three_x_1.
+    fourier.
+    assert (0<1+(2/3)).
+    fourier.
+    apply Rlt_trans with (r2:=(1+(2/3))).
+    exact H5.
+    exact H4.
+    rewrite Rmult_comm.
+    apply Rmult_1_r.
+    field.
+    apply Rlt_le_trans with (r2:=1+(INR n /3)).
+    apply Rlt_le_trans with (r2:=1).
+    fourier.
+    replace (1) with (1+0) at 1.
+    apply Rplus_le_compat_l.
+    apply DWJ_helper3.
+    field.
+    destruct n.
     {
       simpl.
-      unfold I.
-      simpl.
-      replace ((0/3)) with (0) by field.
-      rewrite Rpower_O; try fourier.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
+      replace (0/3) with (0).
+      replace (Rpower 3 0) with 1.
       fourier.
+      symmetry.
+      apply Rpower_O.
+      fourier.
+      field.
     }
     {
-      destruct H3; subst.
-      {
-      unfold I; simpl.
-      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
-      replace (0 / 3) with 0 by field.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
-      try fourier.
-      rewrite Rpower_O; fourier.
-      }
-      destruct H3; subst; unfold I; simpl; try fourier.
-      {
-      replace (1 + 1 + 1 + 1 - 4) with 0 by field.
-      replace ((1 + 1 + 1)/3) with
-          1 by field.
-        replace ((1 - 4)/3) with (-(1)) by field.
-      replace (0 / 3) with 0 by field.        
-      rewrite Rpower_O; try fourier.
-      ring_simplify.
+      
+    unfold Rle.
+    left.
+    apply three_x_1.
+    replace (INR (S n) ) with ((INR n)+1).
+    replace (((INR n)+1)/3) with ((INR n)/3 + (1/3)).
+    apply Rplus_le_lt_0_compat.
+    apply DWJ_helper3.
+    fourier.
+    symmetry.
+    apply Rdiv_plus_distr.
+    symmetry.
+    apply S_INR.
+    }
+    field.
+    symmetry.
+    apply Rpower_plus.
+    field.
+    field.
+    field.
+    symmetry.
+    apply S_INR.
+  }
+  }
+  (*** First case (n mod 3 = 0 is done! ***)
+  destruct H.
+  assert ((S n mod 3) = 2)%nat.
+  replace (S n) with (n+1)%nat.
+  rewrite Nat.add_mod.
+  rewrite H.
+  simpl.
+  reflexivity.
+  omega.
+  omega.
+  rewrite H.
+  rewrite H0.
+  simpl.
+  {
+    induction n.
+    {
+      (* Base *)
+      replace (INR 0) with (0) by (simpl;reflexivity).
+      replace (1 - 2) with (-1) by field.
+      replace ((0-4)/3) with (-1 + (-1/3)) by field.
+      replace (Rpower 3 ((-1 +  (-1 / 3)))) with ((Rpower 3 (-1))*(Rpower 3 (-1/3))).
+      replace (4 * (Rpower 3 (-1) * Rpower 3 (-1 / 3))) with ((Rpower 3 (-1 / 3)) * (4 * (Rpower 3 (-1)))) by field. 
+      replace (2 * Rpower 3 (-1 / 3)) with (Rpower 3 (-1 / 3) * 2) by field.
+      apply Rfourier_lt.
+      replace (-1) with (-(1)) by auto.
       rewrite Rpower_Ropp.
       rewrite Rpower_1.
       fourier.
       fourier.
-      }
-      destruct H3; subst;
-      simpl.
-      {
-        replace ((1+ 1+1 + 1 + 1 + 1)/3) with 2 by field.
-      replace (0 / 3) with 0 by field.
-      replace ((1 + 1 + 1)/3) with 1 by field.
-      rewrite Rpower_1;
-      try fourier.
-      rewrite Rpower_O; try fourier.
-      ring_simplify.
-      replace 2 with (INR 2) by (simpl; ring).
-      rewrite Rpower_pow; try fourier.
-      simpl.
+      replace (-1/3) with (-(1/3)) by field.
+      rewrite Rpower_Ropp.
+      assert ((Rpower 3 (1/3)) <= Rpower 3 1).
+      apply Rle_Rpower.
       fourier.
-      }
-      {
-        replace ((1+ 1+1 + 1 + 1 + 1)/3) with 2 by field.
-        replace ((1+ 1+1 + 1 + 1 + 1 + 1-4)/3) with (1) by field.
-      replace ((1 + 1 + 1)/3) with
-          1 by field.
-      rewrite Rpower_1; try fourier.
-      ring_simplify.
-      replace 2 with (INR 2) by (simpl; ring).
-      rewrite Rpower_pow; try fourier.
-      simpl.
       fourier.
+      apply Rlt_le_trans with (r2:=1/3); auto.
+      fourier.
+      replace (1/3) with (/3) by field.
+      apply Rinv_le_contravar.
+      assert (1<=Rpower 3 (/3)).
+      rewrite <-Rpower_O with (x:=3) at 1.
+      apply Rle_Rpower.
+      fourier.
+      fourier.
+      fourier.
+      fourier.
+      assert (3=Rpower 3 1).
+      symmetry.
+      apply Rpower_1.
+      fourier.
+      rewrite H2 at 3.
+      replace (/3) with (1/3) by field.
+      exact H1.
+      symmetry.
+      apply Rpower_plus.
       }
+      replace (INR (S n)) with ((INR n)+1) by (rewrite S_INR; field). 
+      replace ((INR n) + 1-4) with ((INR n) + -3) by field.
+      replace ((INR n) + 1 + 1 -2) with (INR n) by field.
+      replace (2 * Rpower 3 (INR n / 3)) with (Rpower 3 (INR n / 3) * 2) by field.
+      replace ((INR n + -3) / 3) with ((INR n)/3 + (-3/3)) by field.
+      replace (Rpower 3 ((INR n) / 3 + (-3 / 3))) with ((Rpower 3 ((INR n)/3))*(Rpower 3 (-3/3))).
+      replace (4 * ((Rpower 3 ((INR n) / 3)) * Rpower 3 (-3 / 3))) with ((Rpower 3 ((INR n) / 3))*(4*(Rpower 3 (-3/3)))).
+      apply Rfourier_lt.
+      replace (-3/3) with (-1) by field.
+      replace (-1) with (-(1)) by field.
+      rewrite Rpower_Ropp.
+      rewrite Rpower_1.
+      fourier.
+      fourier.
+      assert (1<=Rpower 3 (INR n /3)).
+      rewrite <-Rpower_O with (x:=3) at 1.
+      apply Rle_Rpower.
+      fourier.
+      {
+        clear.
+        induction n.
+        simpl.
+        fourier.
+        rewrite S_INR.
+        rewrite Rdiv_plus_distr.
+        fourier.
+      }
+      fourier.
+      fourier.
+      field.
+      symmetry.
+      apply Rpower_plus.
     }
-  Qed.
-
-    
-
-End ind_step_min_deg_vert.
-Section Moon.
-  Variable num_mis : lGraph -> nat.
-  Variable deg : nat -> lGraph -> nat.
-  Variable Graph_minus :lGraph ->  list nat -> lGraph.
-  Variable N : lGraph -> nat -> list nat.
-  Hypothesis Prop_4 : forall v (G : lGraph),
-      INR (num_mis G) <= INR (num_mis (Graph_minus G (v::nil))) +
-                         INR (num_mis (Graph_minus G (N G v))).
-
-  Theorem moon_lemma :
-    forall (G : lGraph),
-      (INR (num_mis G)) <= I (lV G)%R. 
-Proof.
-  intros G.
-  induction G using lGraph_vert_str_ind.
   {
-    admit.
+      rewrite H.
+  assert ((S n mod 3) = 0)%nat.
+  replace (S n) with (n+1)%nat.
+  rewrite Nat.add_mod.  
+  rewrite H.
+  simpl.
+  reflexivity.
+  omega.
+  omega.
+  rewrite H0.
+  simpl.
+  induction n.  
+  {
+    simpl.
+    replace (0-2) with (1+-3) by field.
+    replace ((1+-3)/3) with (1/3+(-1)) by field.
+    replace (Rpower 3 ((1/3)+(-1))) with ((Rpower 3 (1/3)) * (Rpower 3 (-1))).  
+    replace (2 * (Rpower 3 (1 / 3) * Rpower 3 (-1)) ) with ((Rpower 3 (1/3)) * (2* (Rpower 3 (-1)))).
+    assert ( Rpower 3 (1 / 3) = Rpower 3 (1 / 3) * 1).
+    field.
+    rewrite H1 at 2.
+    apply Rfourier_lt.
+    replace (-1) with (-(1)) by auto.
+    rewrite Rpower_Ropp.
+    rewrite Rpower_1.
+    fourier.
+    fourier.
+    apply DWJ_helper4.
+    field.
+    symmetry.
+    apply Rpower_plus.
+   }
+    { 
+      replace (INR (S n)) with ((INR n) + 1).
+      replace (INR n +1 -2) with (((INR n) + 2) + (- 3)) by field.
+      replace ((INR n) + 1 + 1) with ((INR n) + 2) by field.
+      replace (Rpower 3 ((INR n + 2) / 3)) with (Rpower 3 ((INR n + 2) / 3) * 1) by field.
+      replace (Rpower 3 ((INR n + 2 + -3) / 3)) with ((Rpower 3 ((INR n +2)/3))*(Rpower 3 (-3/3))).
+      replace  (2* (Rpower 3 ((INR n + 2) / 3) * Rpower 3 (-3 / 3))) with 
+      (Rpower 3 ((INR n + 2) / 3) * (2* Rpower 3 (-3 / 3))) by field.
+      apply Rfourier_lt.
+      replace (-3/3) with (-(1)) by field.
+      rewrite Rpower_Ropp.
+      rewrite Rpower_1.
+      fourier.
+      fourier.
+      apply DWJ_helper5.
+      assert (0<=INR n).
+      apply pos_INR.
+      fourier.
+      symmetry.
+      replace (((INR n)+2 + -3)/3) with (((INR n) +2)/3 + (-3)/3) by field.
+      apply Rpower_plus.
+      rewrite S_INR.
+      reflexivity.
+    }
+   }
+Qed.
+
+      
+ 
+ 
+  (* Need to show that  4 * Rpower 3 ((INR n - 4) / 3) <
+2 * Rpower 3 (INR (n - 1) / 3) 
+
+    We can write this as 4 * Rpower 3 (INR n -1)/3 * Rpower 3 -1
+    And, 4/3 < 2.
+    (as long as    
+    
+  induction n0.
+  {
+    left.
+    simpl.
+    reflexivity.
   }
   {
-    assert (3 <= lV G)%nat.
-    admit.
-    assert (exists (v d : nat), v  <= lV G /\ deg v G = d)%nat.
-    admit.
-    destruct H2 as [v H3].
-    rewrite -> H0 in *.
-    subst.
-    destruct H3 as [d H3].
-    assert (d = 0 \/ d = 1 \/ d = 2 \/ 3 <= d)%nat by 
+      remember (S n0).
+      induction (S n0).
+      {
+        rewrite Heqn1.
+      left;simpl;reflexivity.
+      
+    }
+    {
+      remember (S n2).
+      induction (S n2).
+      {
+        rewrite Heqn1.
+        rewrite Heqn3.
+        left;simpl;reflexivity.
+      }
+      {
+        apply IHn4.
+        assert ((S (S (S n0))) = n0 + 3)%nat.
         omega.
-    destruct H0.
-    {
-      subst.
-      (* need to know stuff about graph and the vertex of 
-         degree 0.  It is isolated so m g <= g (n - 1) *)
-      admit.
-    }
-    destruct H0.
-    {
-      subst.
-      assert (w : nat). 
-      (* single Vertex adjacent to v *)
-      admit.
-      specialize (Prop_4 w G).
-      eapply Rle_trans; eauto.
-      assert( INR (num_mis (Graph_minus G (w :: Datatypes.nil))) +
-              INR (num_mis (Graph_minus G (N G w))) <=
-              2 * I ((lV G) - 2)).
-      {
-        pose proof H.
-        assert (INR (num_mis (Graph_minus G (w :: nil))) =
-                INR (num_mis (Graph_minus G (w :: v :: nil)))).
-        {
-          admit.
-        }
-        rewrite -> H2 in *.
-        specialize (H ((Graph_minus G (w :: v :: Datatypes.nil)))).
-        specialize (H0 (Graph_minus G (N G w))).
-        assert ((lV (Graph_minus G (w :: v :: Datatypes.nil)) < lV G)%nat).
-        {
-          admit.
-        }
-        assert ((lV (Graph_minus G (N G w)) < lV G)%nat).
-        {
-          admit.
-        }
-        apply H in H4.
-        apply H0 in H5.
-        clear - H5 H4.
-        rewrite double.
-        assert ((lV (Graph_minus G (w :: v :: Datatypes.nil)) =
-                 (lV G) - 2))%nat.
-        {
-          admit.
-        }
-        assert ((lV (Graph_minus G (N G w)) =
-                 (lV G) - 2))%nat.
-        {
-          admit.
-        }
-        rewrite -> H in *.
-        rewrite -> H0 in *.
-        apply Rplus_le_compat; auto.
-      }
-      {
-        eapply Rle_trans; eauto.
-        apply I_lower_bound_1; auto.
-      }
-    }
-    
+        rewrite H0.
         
-      {
-        admit.
-      }
+        simpl in H.
   }
-Admitted.
-End Moon.
+  
+    {
+      
+  destruct H.
+
+  induction n0.
+  {
+    left.
+    simpl.
+    reflexivity.
+  }
+  {
+    induction n0.
+    {
+      right;left;simpl;reflexivity.
+    }
+    { 
+      induction n0.
+      {
+        right;right;simpl;reflexivity.
+      }
+      { 
+        destruct IHn0.
+        right;left.
+        assert ((S (S (S n0))) = n0 + 3)%nat.
+        omega.
+        assert ((S (S n0)) = n0 + 2)%nat.
+        omega.
+        rewrite H0.
+        assert (3 mod 3 = 0)%nat.
+        simpl;reflexivity.
+        assert ((n0 + 3) mod 3 = n0 mod 3).
+        replace n0 with (n0 + 0)%nat at 2.
+        rewrite <-H2 at 3.
+        symmetry.
+        apply Nat.add_mod_idemp_r with (n:=3%nat).
+        omega.
+        omega.
+        rewrite H3.
+        rewrite H1 in H.
+        assert ((n0 + 2) mod 3 = (n0 mod 3 + (2 mod 3)) mod 3)%nat.
+        
+        apply Nat.add_mod with (n:=3%nat).
+        omega.
+        rewrite H in H4.
+  
+  intros.
+  omega.
+*)
+
+Theorem I_monontonic:  forall m :nat, forall n:nat, ((n<m)%nat -> I n < I m).
+Proof.
+induction m.
+{
+  induction n.
+  { 
+  intro.
+  inversion H.
+  }
+  {
+    intros.
+    omega.
+  }
+  }
+  {
+    assert (forall n m:nat, (n<m)\/ (n=m) \/ (m<n))%nat.
+    intros.
+    omega.
+    intros.
+    assert ((n < m)%nat \/ n = m \/ (m < n)%nat).
+    apply H.
+    destruct H1.
+    {
+      apply Rlt_trans with (r2:= I m).
+      apply IHm.
+      exact H1.
+      apply Monontonic_helper.
+    }
+    destruct H1.
+    {
+      rewrite H1.
+      apply Monontonic_helper.
+    }
+    {
+      omega.
+    }
+  }
+Qed.
+Theorem I_monontonic2:  forall m :nat, forall n:nat, ((n<=m)%nat -> I n <= I m).
+Proof.
+intros.
+destruct H.
+{
+  fourier.
+}
+{
+  assert (n<S m)%nat.
+  omega.
+  left.
+  apply I_monontonic.
+  exact H0.
+}
+Qed.
+
+

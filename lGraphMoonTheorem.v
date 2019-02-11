@@ -53,6 +53,7 @@ Qed.
    the projection of G to type : @GenGraph nat,  Which is a record 
    of graphs with and explicity list of vertices. 
  *)
+
 Lemma All_MIS_preserved_lGraph_to_GenGraph :
   forall (G : lGraph) (l : list (list nat)),
     MIS_set_lGraph G l -> MIS_set_gGraph (GenGraph_of G) l.

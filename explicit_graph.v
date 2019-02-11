@@ -1550,6 +1550,7 @@ Proof.
       eapply Rle_trans.
       apply le_INR. eapply MIS_Bounds_2_verts; eauto.
       unfold I. simpl. replace (0 / 3) with 0.
+      replace ((1 + 1 - 2) / 3) with 0 by field.
       rewrite Rpower_O. fourier. fourier. field.
       simpl in H3. omega.
     }
@@ -1588,7 +1589,9 @@ Proof.
       replace (gV T (removeVerts _ Tdec G (x ::Datatypes.nil))) with
     (removeList _ Tdec (gV T G) (x::Datatypes.nil)) by auto.
     simpl. apply remove_length_in. auto.
-    admit.
+    apply I_monontonic2.
+    simpl.
+    apply remove_length.
   }
   destruct H2.
   {
@@ -1608,15 +1611,17 @@ Proof.
       (r2 := I (length (gV T (removeVerts T Tdec G (t :: Datatypes.nil))))).
     apply H.
     admit.
-    auto.
     admit.
     apply Rle_trans with
       (r2 := I (length (gV T (removeVerts T Tdec G (t :: genNeighborhood G t))))).
-    apply H.
-    admit. auto.
+    simpl.
     admit.
     (* Nate's inequalities *)
     admit.    
+    admit.
+    replace (I (length (gV T G) - 2) + I (length (gV T G) - 2))
+            with (2 * I (length (gV T G) - 2)) by ring.
+    apply I_lower_bound_1; auto.
   }
   destruct H2.
   {
@@ -1634,7 +1639,7 @@ Proof.
     admit.  
     apply H. admit. eauto. eauto. admit.
     (* Nate's inequalities *)
-    admit.
+    apply I_lower_bound_2; auto.
   }
   { (* This needs the finished proof from Wood's paper *)
     admit.
