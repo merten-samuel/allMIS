@@ -1077,10 +1077,10 @@ Proof.
 Qed.
 
 Lemma MIS_Bounds_1_verts_aux2 :
-  forall G (l : list (list T)) l' t,
+  forall G (l : list (list T)) t,
     MIS_set_gGraph G l -> 
     ((gV _ G) = t::nil) ->
-    In l' l -> equivlistA eq l' (t::nil).
+    forall l', In l' l -> equivlistA eq l' (t::nil).
 Proof.
   intros.
   assert (forall x, In x (l') -> x = t).
@@ -1099,6 +1099,30 @@ Proof.
   inversion H5.
 Qed.
 
+Lemma all_in_no_dup
+      x l
+      (H: InA (equivlistA eq) x l)
+      (All: forall l' : list T, In l' l -> equivlistA eq l' x)
+      (NoDup: NoDupA (equivlistA eq) l): length l = 1.
+  destruct l as [|a l].
+  { inversion H. }
+  simpl. cut (length l = 0).
+  { intros ->; auto. }
+  destruct l; auto.
+  exfalso.
+  assert (H2: In l (a :: l :: l0)).
+  { right; left; auto. }
+  generalize (All l H2).
+  assert (H3: In a (a :: l :: l0)).
+  { left; auto. }
+  generalize (All a H3).
+  intros <- Hx.
+  inversion NoDup; subst. clear NoDup.
+  apply H4. clear H4.
+  left; rewrite Hx.
+  constructor; auto.
+Qed.  
+
 (* For graphs G, if G has one vertex then G has one MIS (length l = 1). *)
 Lemma MIS_bounds_1_verts :
   forall G (l : list (list T)) t,
@@ -1106,28 +1130,12 @@ Lemma MIS_bounds_1_verts :
     ((gV _ G) = t::nil) -> length l = 1.
 Proof.
   intros G l t H H2.
-(*  generalize (MIS_Bounds_1_verts_aux2 G l (
-  
-  intros. inversion H; subst.
+  generalize (MIS_Bounds_1_verts_aux2 _ _ _ H H2).
+  inversion H; subst.
   assert (Hx: MaximalIndSet_E G (t::nil)).
-  { admit. }
-  specialize (H3 _ Hx).
-*)
-
-  
-(*
-  destruct l.
-  generalize MIS_Bounds_1_verts_aux1; intros.
-  eapply H4 in H5; eauto. inversion H5.
-  destruct l0. auto.
-  inversion H3; subst.
-  apply False_rec. apply H7.
-  left. etransitivity.
-  eapply MIS_Bounds_1_verts_aux2; eauto. left. auto.
-  symmetry. eapply MIS_Bounds_1_verts_aux2; eauto. right.
-  left. auto.
-*)
-Admitted.
+  { apply MIS_Bounds_1_verts_aux1 with l; auto. }
+  intros Hy; apply (all_in_no_dup (t::nil)); auto.
+Qed.  
 
 (* For graphs G with two vertices, then for all MISs l' of G, 
    l' = [t1] \/ l' = [t2] \/ l' = [t1:t2]. *)
@@ -1153,7 +1161,8 @@ Lemma equivlistA_length A (l1 l2: list (list A)):
   NoDupA (equivlistA eq) l2 ->  
   equivlistA eq l1 l2 ->
   length l1 = length l2.
-Proof.
+  intros H1 H2 H.
+induction H1.
 Admitted.
 
 Lemma MIS_Bounds_2_verts :
@@ -1813,37 +1822,66 @@ Proof.
     eapply gE_subset_l. apply H4. left. auto. apply genNeighborhood_spec1.
     auto. exact H7. exact H8. rewrite plus_INR.
     apply Rle_trans with
-      (r2 := ((I (length (gV T G) -2)) + (I (length (gV T G) -2)))).
-    apply Rplus_le_compat.
-    apply Rle_trans with
-      (r2 := I (length (gV T (removeVerts T Tdec G (t :: Datatypes.nil))))).
-    apply H.
-    unfold neighborhood_E in H4.
-    assert (List.In t (gV T G)).
-    assert (List.In t [t] <-> List.In (t,x) (gE T G)).
-    apply H4.
-    assert (List.In t [t]).
-    simpl.
-    left;reflexivity.
-    assert (List.In (t, x) (gE T G)).
-    apply H9.
-    exact H10.
-    apply gE_subset_l with (y:=x).
-    exact H11.
-    SearchAbout remove.
-    unfold removeVerts.
-    simpl.
-    SearchAbout remove.
-    assert ((length (remove Tdec t (gV T G))) < length (gV T G))%nat.
-    
-    apply remove_length_in.
-    exact H9.
-    omega.
-    exact H7.
-    admit. (* Doesn't look to be true! *)
-    auto.
+        (r2 := ((I (length (gV T G) -2)) + (I (length (gV T G) -2)))).
+    { assert (Hx: forall y0, MIS_set_gGraph (removeVerts T Tdec G (t::x::[])) y0 ->
+                             length x0 = length y0).
+      { admit. }
+      destruct (MIS_exists (removeVerts T Tdec G (t::x::[]))) as [y0 Hy0].
+      specialize (Hx _ Hy0).
+      rewrite Hx.
+      apply Rplus_le_compat.
+      { 
+      apply Rle_trans with
+          (r2 := I (length (gV T (removeVerts T Tdec G (t :: x :: Datatypes.nil))))).
+      apply H.
+      unfold neighborhood_E in H4.
+      assert (List.In t (gV T G)).
+      assert (List.In t [t] <-> List.In (t,x) (gE T G)).
+      apply H4.
+      assert (List.In t [t]).
+      simpl.
+      left; reflexivity.
+      assert (List.In (t, x) (gE T G)).
+      apply H9.
+      exact H10.
+      apply gE_subset_l with (y:=x).
+      exact H11.
+      unfold removeVerts.
+      simpl.
+      assert ((length (remove Tdec t (gV T G))) < length (gV T G))%nat.
+      { 
+        apply remove_length_in.
+        exact H9.
+      }
+      { eapply Nat.le_trans.
+        apply remove_length.
+        omega.
+      }
+      exact Hy0.
+      apply I_monontonic2.
+      assert (Hw:
+                (length (gV T (removeVerts T Tdec G [t; x]))
+                 < length (gV T G) - 1)%nat).
+      {
+      eapply Nat.lt_le_trans.        
+      apply remove_length_in; auto.
+      { rewrite remove_mem.
+        split; auto.
+        intros Hcontra.
+        generalize (gE_irref _ G); intros Hz.
+        unfold neighborhood_E in H4.
+        subst.
+        specialize (H4 t).
+        destruct H4 as [A B]; apply (Hz t); apply A; left; auto. }
+      cut (length (remove Tdec t (gV T G)) < length (gV T G))%nat.
+      { intros; omega. }
+      apply remove_length_in.
+      apply gE_subset_l with (y:=x).
+      apply H4; left; auto. }
+      omega. }
     admit. (* This is true, since t has degree 1 *)
-    replace (I (length (gV T G) - 2) + I (length (gV T G) - 2)) with (2*I (length (gV T G) - 2)) by field. 
+    }
+    replace (I (length (gV T G) - 2) + I (length (gV T G) - 2)) with (2*I (length (gV T G) - 2)) by field.
     apply I_lower_bound_1.
     omega.
   }
@@ -1865,8 +1903,8 @@ Proof.
     (* Nate's inequalities *)
     admit.
   }
-  { (* This needs the finished proof from Wood's paper *)
-    admit.
-  }
+  (* This needs the finished proof from Wood's paper (where all vertices 
+     of degree 2) *)
+  admit.
 Admitted.
 End GraphInequalities.
