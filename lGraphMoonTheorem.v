@@ -5,6 +5,7 @@ Require Import SetoidList.
 Require Import Omega.
 Require Import all_MIS.
 Require Import all_MIS_complete.
+Import MIS_basics.
 
 Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
 | mkMIS_setL :
@@ -197,4 +198,148 @@ Proof.
   }        
 Qed.
 
+Lemma Proper_list_eq :forall a,
+    Proper (equivlistA eq ==> flip impl) (lex_order.list_eq a).
+Proof.
+  intros.
+  red.
+  red.
+  intros.
+  unfold flip.
+  unfold impl.
+  intros.
+  red in H0.
+  red in H.
+  red.
+  split; intros; auto.
+  {
+    apply H0 in H1.
+    rewrite <- In_InAeq_iff in H1;
+      rewrite <- In_InAeq_iff .
+    apply H; auto.
+  }
+  {
+    rewrite <- In_InAeq_iff in H1;
+      rewrite <- In_InAeq_iff .
+    apply H in H1; auto.
+    rewrite In_InAeq_iff in H1;
+      rewrite In_InAeq_iff .
+    apply H0; auto.
+  }
+Qed.
 
+Instance : (forall a,
+    Proper (equivlistA eq ==> flip impl) (lex_order.list_eq a)).
+apply Proper_list_eq.
+Qed.
+
+Instance : forall a,
+ Proper (lex_order.list_eq ==> flip impl) (equivlistA eq a).
+Proof.
+  red.
+  red.
+  intros.
+  unfold impl.
+  unfold flip.
+  intros.
+  red in H0.
+  red in H.
+  red.
+  split; intros; auto.
+  {
+    apply H0 in H1.
+    rewrite In_InAeq_iff in H1;
+      rewrite In_InAeq_iff .
+    apply H; auto.
+  }
+  {
+    rewrite In_InAeq_iff in H1;
+      rewrite In_InAeq_iff .
+    apply H in H1; auto.
+    rewrite <- In_InAeq_iff in H1;
+      rewrite <- In_InAeq_iff .
+    apply H0; auto.
+  }
+Qed.
+
+Lemma AllMIS_exists_helper : forall x0 x l,
+  lex_order.list_eq x0 x -> 
+  In x0 l -> 
+  InA (equivlistA eq) x l.
+Proof.
+  intros.
+  induction l.
+  inversion H0.
+  inversion H0; subst; auto.
+  left.
+  rewrite H.
+  constructor; try split; intros; auto.
+Qed.
+
+
+Lemma AllMIS_exists_lGraph : forall
+    (G : lGraph),
+    MIS_set_lGraph G ((PrintMIS G)).
+Proof.
+  intros.
+  constructor.
+  {
+    intros.
+    apply all_MIS_sound.PrintMIS_correct; auto.
+  }
+  {
+    pose proof (all_MIS_unique.PrintMIS_unique G). 
+    induction H.
+    constructor.
+    subst.
+    constructor; auto.
+    intros Hnot.
+    apply H.
+    clear - Hnot.
+    induction L; auto.
+    inversion Hnot.
+    inversion Hnot.
+    subst.
+    constructor.
+    rewrite H0.
+    apply lex_order.list_eq_ref.
+    subst.
+    apply IHL in H0.
+    right; auto.
+  }
+  {
+    intros.
+    pose proof (PrintMIS_complete G); auto.
+    unfold MIS_basics.MaximalIndSet_lGraph in H0.
+    apply H0 in H; auto.
+    destruct H; intuition.
+    eapply AllMIS_exists_helper; eauto.
+  }
+Qed.
+
+Require Import Reals.
+Require Import moon_lemma.
+Theorem MIS_bounds_lGraph : forall G l,
+    MIS_set_lGraph G l -> 
+    INR (length l) <= I (lV G).
+Proof.
+  intros.
+  apply All_MIS_preserved_lGraph_to_GenGraph in H.
+  pose proof (@MIS_Bounds nat Nat.eq_dec (GenGraph_of G) l H);
+    auto.
+  assert (length (gV nat (GenGraph_of G)) = lV G); auto.
+  {
+    unfold GenGraph_of.
+    simpl.
+    destruct Nat.eq_dec; subst; auto.
+    clear -n.
+    generalize dependent (lV G).
+    intros.
+    induction n; auto.
+    contradiction.
+    destruct n; simpl in *; auto.
+    rewrite <- IHn; auto.
+    rewrite Nat.sub_0_r; auto.
+  }
+  rewrite <- H1; auto.
+Qed.
