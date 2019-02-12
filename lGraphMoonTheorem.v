@@ -319,13 +319,14 @@ Qed.
 
 Require Import Reals.
 Require Import moon_lemma.
-Theorem MIS_bounds_lGraph : forall G l,
+Theorem MIS_bounds_lGraph : forall G l
+    (mkG_MIS :  (GenGraph nat) -> list (list nat)), (*FIXME: This assumption needs to be instantiated.*)    
     MIS_set_lGraph G l -> 
     INR (length l) <= I (lV G).
 Proof.
   intros.
   apply All_MIS_preserved_lGraph_to_GenGraph in H.
-  pose proof (@MIS_Bounds nat Nat.eq_dec (GenGraph_of G) l H);
+  pose proof (@MIS_Bounds nat Nat.eq_dec mkG_MIS (GenGraph_of G) l H);
     auto.
   assert (length (gV nat (GenGraph_of G)) = lV G); auto.
   {

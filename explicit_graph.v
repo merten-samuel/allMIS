@@ -1452,8 +1452,329 @@ Proof.
   }
 Qed.
 
+(*TODO:  Fill me in with MIS TRANSFORM *)
+Variable mkG_MIS :  (GenGraph T) -> list (list T).
 
+Lemma mkG_MIS_spec : forall G,
+  MIS_set_gGraph G (mkG_MIS G).
+Proof.
 
+Admitted.
+
+Lemma MIS_exists : 
+  forall G, 
+    exists (l : list (list T)), MIS_set_gGraph G l.
+Proof. intros. exists (mkG_MIS G). apply mkG_MIS_spec. Qed.
+
+Definition BigSum_nat {X : Type} (l : list X) (f : X -> nat):=
+  fold_right plus 0 (map f l).
+
+Lemma BigSum_step  {X : Type} :
+  forall (l : list X) x f,
+  BigSum_nat (x::l) f = f x + BigSum_nat l f.
+Proof.
+  intros. unfold BigSum_nat.
+  simpl. auto.
+Qed.
+
+Lemma BigSum_nat_map_rewrite {X Y : Type} :
+  forall l f_count (fm1 fm2 : Y -> X),
+    (forall x, In x l -> f_count (fm1 x) <= f_count (fm2 x)) ->
+      BigSum_nat (map fm1 l) f_count <= 
+      BigSum_nat (map fm2 l) f_count .
+Proof.
+  induction l. intros.
+  simpl. auto.
+  intros. simpl. unfold BigSum_nat. simpl.
+  apply Nat.add_le_mono.
+  apply H. left. auto.
+  apply IHl. intros. apply H. right. auto.
+Qed.
+
+Definition list_excised_MIS_step G x : list (list T) :=
+  mkG_MIS (removeVerts T Tdec G (x::(genNeighborhood G x))).
+
+Definition list_excised_MIS G x :=
+  map (fun k => list_excised_MIS_step G k) (x::genNeighborhood G x).
+
+(*
+Fixpoint list_excised_MIS_aux G l :=
+  match l with 
+  | nil => nil
+  | cons x l' => (list_excised_MIS_step G x) ++ (list_excised_MIS_aux G l')
+  end.
+
+Definition list_excised_MIS G x : list (list T) :=
+  list_excised_MIS_aux G (x::(genNeighborhood G x)).
+*)
+
+Fixpoint find_b x l :=
+match l with
+| nil => false
+| y :: l' => if Tdec x y then true else (find_b x l')
+end.
+
+Lemma find_b_spec :
+  forall x l, find_b x l = true <-> In x l.
+Proof.
+  intros. induction l; simpl; split; intros.
+  congruence. inversion H. destruct Tdec in H.
+  left. auto. right. apply IHl. auto.
+  destruct Tdec. auto. apply IHl. destruct H.
+  congruence. auto.
+Qed. 
+
+Lemma In_map_remove_not_in :
+  forall x l L,
+    In l (map (fun l' => remove Tdec x l') L) ->
+    ~ In x l.      
+Proof.
+  intros. induction L.
+  simpl in H. inversion H.
+  simpl in H. destruct H. subst.
+  apply remove_In. apply IHL.
+  auto.
+Qed.
+
+Lemma big_sum_NoDup_excise :
+  forall (l : list T) x f ,
+    NoDup l ->
+    In x l ->
+    BigSum_nat l f = BigSum_nat (remove Tdec x l) f + f x.
+Proof.
+  induction l. intros.
+  inversion H0.
+  intros. destruct H0. subst.
+  rewrite BigSum_step. simpl.
+  destruct Tdec. rewrite remove_id. omega.
+  inversion H. auto. congruence.
+  simpl.  destruct Tdec. subst. inversion H. congruence.
+  do 2 rewrite BigSum_step. rewrite (IHl x). omega.
+  inversion H. auto. auto.
+Qed.
+
+Lemma big_sum_func_equiv {X : Type} : 
+  forall (l : list X) f1 f2,
+    (forall x, In x l -> f1 x = f2 x) ->
+    BigSum_nat l f1 = BigSum_nat l f2.
+Proof.
+  induction l. intros. simpl. auto.
+  intros. do 2 rewrite BigSum_step.
+  erewrite IHl. rewrite H. reflexivity. left. auto.
+  intros. apply H. right. auto.
+Qed.
+
+Lemma big_sum_length_disjoint_split :
+  forall l1 (l2 : list T),
+    NoDup l2 ->
+    (forall l,
+      In l l1 ->
+      (exists x, In x l2 /\ In x l /\ (forall x', x' <> x -> In x l2 -> ~ In x l))) ->
+    length l1 = BigSum_nat l2 (fun x => length (filter (find_b x) l1)).
+Proof.
+  intros l1.
+  induction l1; intros.
+  simpl. induction l2. simpl. auto.
+  rewrite BigSum_step. rewrite <- IHl2. omega.
+  inversion H; auto.
+  intros. inversion H1.
+  simpl (length (a::l1)).
+  rewrite (IHl1 l2). 
+  assert (In a (a::l1)) by (left; auto).
+  apply H0 in H1.
+  do 2 destruct H1. destruct H2.
+  rewrite (big_sum_NoDup_excise) with (x := x); auto.
+  rewrite (big_sum_NoDup_excise l2 x); auto.
+  assert (BigSum_nat (remove Tdec x l2)
+                     (fun x0 : T => length
+                        (filter (find_b x0) (a :: l1))) =
+          BigSum_nat (remove Tdec x l2)
+                     (fun x0 : T => length
+                        (filter (find_b x0) (l1)))).
+  {
+    apply big_sum_func_equiv. intros.
+    simpl. case_eq (find_b x0 a); intros.
+    apply find_b_spec in H5.
+    apply False_rec.
+    apply (H3 x0); try auto.
+    apply remove_mem in H4. destruct H4. auto.
+    auto.
+  }
+  rewrite <- H4.
+  replace (length (filter (find_b x) (a :: l1)))
+    with (S (length (filter (find_b x) l1))).
+  omega.
+  simpl.
+  case_eq (find_b x a); intros. simpl; omega.
+  apply False_rec. apply find_b_spec in H2. congruence.
+  auto.
+  intros. apply H0. right. auto.
+Qed.
+
+Lemma big_sum_func_ge {X : Type} : 
+  forall (l : list X) f1 f2,
+    (forall x, In x l -> f1 x <= f2 x) ->
+  BigSum_nat l f1 <= BigSum_nat l f2.
+Proof.
+  intros l. induction l.
+  intros. auto.
+  intros. do 2 rewrite BigSum_step.
+  assert (BigSum_nat l f1 <= BigSum_nat l f2).
+  apply IHl. intros. apply H. right. auto.
+  assert (In a (a::l)). left. auto. apply H in H1. omega.
+Qed. 
+
+Lemma big_sum_inj_bound : 
+  forall l1 (l2 : list T),
+    (forall l, In l l1 -> exists x, In x l2 /\ In x l) ->
+    (NoDup l2) ->
+    length l1 <= BigSum_nat l2 (fun x => length (filter (find_b x) l1)).
+Proof.
+  intros l1.
+  induction l1. intros. simpl.
+  clear H. induction l2. simpl; auto.
+  rewrite BigSum_step. omega.
+  intros. 
+  etransitivity. simpl. apply le_n_S.
+  apply IHl1. intros. apply (H l). right. auto.
+  clear IHl1. auto. 
+  assert (In a (a::l1)) by (left; auto).
+  apply H in H1. do 2 destruct H1.
+  rewrite (big_sum_NoDup_excise) with (x := x); auto.
+  rewrite (big_sum_NoDup_excise l2) with (x := x); auto.
+  assert (length (filter (find_b x) l1) <
+          length (filter (find_b x) (a :: l1))).
+  simpl. case_eq (find_b x a); intros. 
+  simpl. omega. apply find_b_spec in H2. congruence.
+  assert ((BigSum_nat (remove Tdec x l2)
+            (fun x0 : T => length (filter (find_b x0) l1)) <=
+          (BigSum_nat (remove Tdec x l2)
+            (fun x0 : T => length (filter (find_b x0) (a::l1)))))).
+  apply big_sum_func_ge.
+  intros. simpl. destruct find_b; simpl; omega. omega.
+Qed.
+
+Lemma map_step {X U : Type}:
+  forall (x: X) l (f: X -> U),
+    map f (x::l) = f x :: map f l.
+Proof. intros. simpl. auto. Qed.
+
+Lemma big_sum_map_index {X Y : Type} :
+  forall (l : list X) (f_map : X -> Y) f_count,
+    BigSum_nat l (fun x => f_count (f_map x)) =
+    BigSum_nat (map f_map l) f_count.
+Proof.
+  intros.
+  induction l. simpl. auto.
+  simpl.
+  do 2 rewrite BigSum_step. rewrite IHl. auto.
+Qed.  
+
+Lemma isElemMember : forall (l1 l2 : list T),
+  (forall x, In x l2 -> ~ In x l1) \/ (exists x, In x l2 /\ In x l1).
+Proof.
+  induction l2. left. intros. inversion H.
+  destruct (In_dec Tdec a l1). right. exists a. split. left. auto.
+  auto. destruct IHl2. left. intros. destruct H0; subst. auto.
+  auto. do 2 destruct H. right. exists x. split. right. auto. auto.
+Qed.
+
+Lemma neighMISWitness : 
+  forall G (x : T) l neigh,
+    MaximalIndSet_E G l ->
+    In x (gV _ G) ->
+    (neighborhood_E T G x neigh) ->
+      exists x', In x' (x::neigh) /\ In x' l.
+Proof.
+  intros.
+  destruct (isElemMember l (x::neigh)).
+  apply False_rec.
+  assert (In x (x::neigh)) by (left; auto).
+  apply H2 in H3. inversion H. 
+  specialize (H5 _ H0 H3).
+  do 2 destruct H5. 
+  destruct H6. apply H2 in H6. auto.
+  right. apply H1. apply (gE_symm). auto.
+  do 2 destruct H2.
+  exists x0. repeat split; auto.
+Qed.
+
+Lemma WoodIneq_aux : 
+  forall l G x,
+    In x (gV _ G) ->
+    MIS_set_gGraph G l ->
+    length l <= BigSum_nat (list_excised_MIS G x) (@length (list T)).
+Proof.
+  intros.
+  etransitivity.
+  2:{ apply BigSum_nat_map_rewrite with
+        (fm1 := fun v => (filter (fun l' => (find_b v l')) l)).
+      intros. 
+      replace (length (filter (fun l' : list T => find_b x0 l') l)) with
+              (length (map (fun l' => remove Tdec x0 l')
+                (filter (fun l' : list T => find_b x0 l') l))).
+      2:{ apply map_length. }
+      apply NoDupA_subset_length with (R := equivlistA eq).
+      apply list_eq_dec. apply Tdec.
+      apply equivlist_equiv. apply eq_equivalence.
+      apply remove_NoDupA. apply filter_NoDupA. 
+      inversion H0. auto.
+      intros. apply filter_In in H2. destruct H2.
+      apply find_b_spec. auto.
+      intros.
+      unfold list_excised_MIS_step.
+      specialize (mkG_MIS_spec
+        (removeVerts T Tdec G (x0 :: genNeighborhood G x0))).
+      intros. apply H3.
+      apply listeq_preserves_MIS_E with (l1 := remove Tdec x0 (x0::x1)).
+      simpl. destruct Tdec; try congruence. rewrite remove_id. reflexivity.
+      intros Hcontra. apply InA_alt in H2. destruct H2. destruct H2.
+      assert (InA eq x0 x1). apply InA_alt. exists x0. split; auto.
+      apply H2 in H5. 
+      apply InA_alt in H5.
+      destruct H5. destruct H5. repeat subst.
+      apply In_map_remove_not_in in H4. congruence.
+      apply Prop4_aux2. left. auto.
+      apply AllInA_remove_undo in H2.
+      apply filter_InA in H2. destruct H2.
+      apply InA_alt in H2. do 2 destruct H2.
+      eapply listeq_preserves_MIS_E. symmetry. apply H2.
+      apply H0. auto. intros a b Hp.
+      case_eq (find_b x0 a). intros.
+      apply find_b_spec in H5. symmetry. 
+      apply find_b_spec. assert (InA eq x0 a).
+      apply InA_alt. exists x0. split; auto.
+      apply Hp in H6. apply InA_alt in H6.
+      do 2 destruct H6; subst. auto.
+      intros Hcontra.
+      case_eq (find_b x0 b). intros.
+      apply find_b_spec in H5.
+      assert (InA eq x0 b). apply InA_alt.
+      exists x0. split; auto. apply Hp in H6.
+      apply InA_alt in H6. do 2 destruct H6; subst.
+      apply find_b_spec in H7. congruence.
+      intros. auto.
+      intros. apply filter_In in H4.
+      destruct H4. apply find_b_spec in H5. auto.
+      apply genNeighborhood_spec1.
+  }
+  {
+    rewrite <- big_sum_map_index.
+    etransitivity. apply big_sum_inj_bound.
+    intros.
+    generalize (@neighMISWitness G x l0 (genNeighborhood G x)).
+    intros. destruct H2; try auto. apply H0. auto.
+    apply genNeighborhood_spec1. destruct H2. exists x0. split.
+    exact H2. exact H3. constructor.
+    intros Hcontra. apply genNeighborhood_spec1 in Hcontra.
+    apply gE_irref in Hcontra. auto.
+    apply genNeighborhood_spec2.
+    apply big_sum_func_ge. intros.
+    clear H1 H0. induction l. simpl. auto.
+    simpl. destruct find_b; simpl; omega.
+  }
+Qed.
+Print Assumptions WoodIneq_aux.
 (* Possible prove of ALL_MIS exists *)
 Lemma all_subsets_list_subset :
   forall  (l l' : list T),
@@ -1481,7 +1802,7 @@ Proof.
 Definition AllMIS (G : @GenGraph T) :=
   filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
 
-Lemma MIS_exists : 
+(*Lemma MIS_exists : 
   forall G, 
     exists (l : list (list T)), MIS_set_gGraph G l.
 Proof.
@@ -1537,6 +1858,7 @@ Proof.
     apply MaxProg_iff; auto.
   }
 Admitted.
+ *)
 
 Require Import Reals.
 Require Import Omega.
