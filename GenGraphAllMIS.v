@@ -734,6 +734,17 @@ Lemma MaximalIndSetProg_equivlistA
   (x0 y : list T)
   (H0 : equivlistA eq x0 y) :
   MaximalIndSetProg G x0 = MaximalIndSetProg G y.
+Proof.
+  unfold MaximalIndSetProg.
+  f_equal.
+  { 
+    f_equal.
+    { unfold ValidSetProg.
+      admit. (*general lemma about forallb, equivlistA*) }
+    unfold IndependentProg.
+    admit. (*ditto*)
+  }
+  admit.
 Admitted.  
 
 Lemma MIS_exists : 
