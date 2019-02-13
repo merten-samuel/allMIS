@@ -569,7 +569,17 @@ Proof.
       {
         red; intros.
         simpl.
-        admit.
+        specialize (H _ H2).
+        destruct (Tdec a x0).
+        { subst; auto. }
+        rewrite orb_false_l in H.
+        unfold list_mem in H.
+        rewrite existsb_exists in H.
+        destruct H as [y [Hx Hy]].
+        right.
+        destruct (Tdec y x0).
+        { subst; auto. }
+        inversion Hy.
       }
       red; intros.
       simpl.
