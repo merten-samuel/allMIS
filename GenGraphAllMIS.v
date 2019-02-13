@@ -1,6 +1,6 @@
 Require Import explicit_graph.
 Require Import SetoidList List.
-
+Require Import FunctionalExtensionality.
 
 Ltac in_inv :=
   simpl in *; 
@@ -727,6 +727,91 @@ Admitted.
 Definition AllMIS (G : @GenGraph T) :=
   filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
 
+Lemma forallb_false1
+      (f: T -> bool)
+      (l: list T) :
+  forallb f l = false ->
+  (exists x: T, In x l /\ f x = false).
+Proof.
+  induction l.
+  { inversion 1. }
+  simpl.
+  rewrite andb_false_iff.
+  intros H.
+  destruct H.
+  { exists a; split; auto. }
+  destruct (IHl H) as [x [H3 H4]].
+  exists x; split; auto.
+Qed.
+
+Lemma forallb_false2
+      (f: T -> bool)
+      (l: list T) :
+  (exists x: T, In x l /\ f x = false) -> 
+  forallb f l = false.
+Proof.
+  induction l.
+  { intros [x [A B]]. inversion A. }
+  intros [x [A B]].
+  simpl.
+  inversion A.
+  { subst.
+    rewrite B; auto. }
+  rewrite andb_false_iff; right.
+  apply IHl.
+  exists x.
+  split; auto.
+Qed.  
+
+Lemma forallb_false
+      (f: T -> bool)
+      (l: list T) :
+  forallb f l = false <->
+  (exists x: T, In x l /\ f x = false).
+Proof. split. apply forallb_false1. apply forallb_false2. Qed.
+
+Lemma forallb_equivlistA
+      (f: T -> bool)
+      (l1 l2: list T)
+      (H: equivlistA eq l1 l2) :
+      forallb f l1 = forallb f l2.
+Proof.
+  destruct (forallb f l2) eqn:H2.
+  { rewrite forallb_forall; intros x Hin.
+    { destruct (H x) as [A B].
+      rewrite forallb_forall in H2.
+      apply H2; auto.
+      rewrite <-In_InAeq_iff; apply A; rewrite In_InAeq_iff; auto. }}
+  rewrite forallb_false in H2.
+  destruct H2 as [x [Hin H3]].
+  rewrite forallb_false.
+  exists x; split; auto.
+  destruct (H x); rewrite <-In_InAeq_iff; apply H1; rewrite In_InAeq_iff; auto.
+Qed.  
+
+Lemma existsb_demorgan
+      (f: T -> bool)
+      (l: list T) :
+  existsb f l = negb (forallb (fun x => negb (f x)) l).
+Proof.
+  induction l; auto.
+  simpl.
+  rewrite negb_andb, negb_involutive.
+  f_equal.
+  rewrite IHl; auto.
+Qed.
+
+Lemma existsb_equivlistA
+      (f: T -> bool)
+      (l1 l2: list T)
+      (H: equivlistA eq l1 l2) :
+      existsb f l1 = existsb f l2.
+Proof.
+  do 2 rewrite existsb_demorgan.
+  f_equal.
+  apply forallb_equivlistA; auto.
+Qed.  
+
 Lemma MaximalIndSetProg_equivlistA
   (G : GenGraph T)
   (x : list T)
@@ -740,12 +825,24 @@ Proof.
   { 
     f_equal.
     { unfold ValidSetProg.
-      admit. (*general lemma about forallb, equivlistA*) }
+      apply forallb_equivlistA; auto. }
     unfold IndependentProg.
-    admit. (*ditto*)
+    rewrite (forallb_equivlistA _ x0 y); auto.
+    f_equal.
+    apply functional_extensionality; intros x1.
+    rewrite (forallb_equivlistA _ x0 y); auto.
   }
-  admit.
-Admitted.  
+  f_equal.
+  apply functional_extensionality; intros x1.
+  unfold list_mem.
+  rewrite (existsb_equivlistA _ x0 y); auto.
+  destruct (negb _); auto.
+  f_equal.
+  apply functional_extensionality; intros x2.
+  f_equal.
+  f_equal.
+  apply existsb_equivlistA; auto.
+Qed.
 
 Lemma MIS_exists : 
   forall G, 
