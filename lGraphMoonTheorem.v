@@ -1,3 +1,4 @@
+Require Import GenGraph.
 Require Import explicit_graph.
 Require Import graph_basics.
 Require Import graphs_nondep.
@@ -5,6 +6,7 @@ Require Import SetoidList.
 Require Import Omega.
 Require Import all_MIS.
 Require Import all_MIS_complete.
+Require Import all_MIS_unique.
 Import MIS_basics.
 
 Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
@@ -17,6 +19,106 @@ Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
         InA (equivlistA eq) x l) ->
     MIS_set_lGraph G l.
 
+
+
+  Fixpoint enumerate (x : nat) :=
+    match x with
+    | O => 0::nil
+    | S x' => x::(enumerate x')
+    end.
+
+  Fixpoint enumerate_acc (count : nat) (x : nat) :=
+    match x with
+    | O => count::nil
+    | S x' => count::(enumerate_acc (S count) x')
+    end.
+
+  Lemma enumerate_complete :
+    forall x y, y <= x -> In y (enumerate x).
+  Proof.
+    induction x. intros. simpl. left.
+    omega. intros. inversion H. left. auto.
+    right. apply IHx. auto.
+  Qed.
+
+  Lemma enumerate_bounded : 
+    forall x y, x < y -> ~ In y (enumerate x).
+  Proof.
+    induction x. intros. intros Hcontra. inversion Hcontra.
+    omega. inversion H0.
+    intros. simpl. intros Hcontra.
+    destruct Hcontra. omega. eapply IHx; [|eauto]. omega.
+  Qed.
+
+  Lemma enumerate_nodup : 
+    forall x, NoDup (enumerate x).
+  Proof.
+    induction x. constructor. intros H.
+    inversion H. constructor. simpl.
+    constructor. apply enumerate_bounded. omega.
+    auto.
+  Qed.
+
+  Program Definition GenGraph_of (G : lGraph) : @GenGraph nat :=
+     mkGGraph _ (if Nat.eq_dec (lV G) 0 then nil else enumerate ((lV G)-1)) (nodup _ (flatten_EdgesGraph G)) _ _ _ _ _. 
+  Next Obligation.
+    destruct (eq_nat_dec n1 n);
+    [destruct (eq_nat_dec n2 n0);
+      [left; subst | right]
+    | right];congruence.
+  Qed.
+  Next Obligation.
+    rewrite nodup_In.
+    intros HContra. eapply flatten_Edges_irref. eauto. auto.
+  Qed.
+  Next Obligation.
+    rewrite nodup_In.
+    apply flatten_Edges_symm.
+    rewrite nodup_In in H. auto.
+  Qed.
+  Next Obligation.
+    destruct Nat.eq_dec; auto.
+    constructor.
+    apply enumerate_nodup.
+  Qed.
+  Next Obligation.
+    apply NoDup_nodup.
+  Qed.
+  Next Obligation.
+    rewrite nodup_In in H.
+    apply flatten_EdgesGraph_spec2 in H.
+    destruct H.
+    destruct Nat.eq_dec; auto.
+    omega.
+    apply enumerate_complete; auto.
+    omega.
+  Qed.
+    
+  (* have a function h that maps maximal independent sets in lGraphs to 
+     maximal independent sets in GenGraphs 
+     Proof that that function is injective
+   *)        
+  
+  
+  Lemma enumerate_inj : forall x y, enumerate x = enumerate y ->
+                                    x = y.
+  Proof.
+    intros.
+    destruct x.
+    simpl in H.
+    destruct y.
+    simpl in H.
+    auto.
+    simpl in H.
+    inversion H.
+    simpl in H.
+    destruct y.
+    simpl in *.
+    inversion H.
+    simpl in *.
+    inversion H.
+    auto.
+  Qed.
 
 Lemma enumerate_sound' : forall x V,
     In x (enumerate V) -> x <= V.

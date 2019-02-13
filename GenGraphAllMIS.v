@@ -1,4 +1,5 @@
-Require Import explicit_graph.
+Require Import GenGraph.
+Require Import fintype.
 Require Import SetoidList List.
 Require Import FunctionalExtensionality.
 
@@ -322,6 +323,7 @@ Proof.
         simpl in *.
         apply In_InAeq_iff in H0.
         apply H in H0.
+        inversion H0; 
         intuition.
       }
     }
