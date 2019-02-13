@@ -620,7 +620,8 @@ Proof.
         rewrite B' in B; congruence.
         apply n; auto. }
       admit.
-    }
+      }
+    simpl.
     admit.
   }
   inversion H.
@@ -726,6 +727,15 @@ Admitted.
 Definition AllMIS (G : @GenGraph T) :=
   filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
 
+Lemma MaximalIndSetProg_equivlistA
+  (G : GenGraph T)
+  (x : list T)
+  (H : MaximalIndSet_E G x)
+  (x0 y : list T)
+  (H0 : equivlistA eq x0 y) :
+  MaximalIndSetProg G x0 = MaximalIndSetProg G y.
+Admitted.  
+
 Lemma MIS_exists : 
   forall G, 
     exists (l : list (list T)), MIS_set_gGraph G l.
@@ -753,8 +763,7 @@ Proof.
     red.
     red.
     intros.
-    (* I think this will work *)
-    admit.
+    eapply MaximalIndSetProg_equivlistA; eauto.
   }
   split.
   {
@@ -781,6 +790,6 @@ Proof.
   {
     apply MaxProg_iff; auto.
   }
-Admitted.
+Qed.
 
 End AllMIS.
