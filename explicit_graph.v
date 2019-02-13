@@ -1890,6 +1890,12 @@ Proof.
       }
 Qed.
 
+(* Lemma Neighbor_NEQ:
+  forall G l x y,
+  (neighborhood_E G x l) -> (InA y l) -> (x <> y).
+Proof. *)
+  
+
 Lemma MIS_Bounds :
   forall G (l : list (list T)),
     MIS_set_gGraph G l -> 
@@ -2155,6 +2161,31 @@ Proof.
         apply remove_mem.
         split.
         exact H2.
+        { 
+      assert (List.In t [t] <-> List.In (t,x) (gE T G)).
+      apply H4.
+      assert (List.In t [t]).
+      simpl.
+      left; reflexivity.
+      assert (List.In (t, x) (gE T G)).
+      
+      apply H10.
+      exact H11.
+
+      assert (List.In t (gV T G)).
+      apply gE_subset_l with (y:=x).
+      exact H12.
+      assert (~List.In (x,x) (gE T G)).
+      apply gE_irref.
+      intro.
+      rewrite H15 in H14 at 1.
+      contradiction.  (* x<> t done!!! *)
+      }
+
+      apply gE_subset_l with (y:=x).
+      exact H12.
+      unfold removeVerts.
+      simpl.
         unfold neighborhood_E in H4.
         (* Prove that x is still in the graph *) 
 
