@@ -845,13 +845,10 @@ Proof.
   f_equal.
   apply existsb_equivlistA; auto.
 Qed.
-
-Lemma MIS_exists : 
-  forall G, 
-    exists (l : list (list T)), MIS_set_gGraph G l.
+                                                        
+Lemma AllMIS_spec : forall G,
+  MIS_set_gGraph G (AllMIS G).
 Proof.
-  intros.
-  exists (AllMIS G).
   unfold AllMIS.
   constructor.
   intros.
@@ -900,6 +897,15 @@ Proof.
   {
     apply MaxProg_iff; auto.
   }
+Qed.
+
+Lemma MIS_exists : 
+  forall G, 
+    exists (l : list (list T)), MIS_set_gGraph G l.
+Proof.
+  intros.
+  exists (AllMIS G).
+  apply AllMIS_spec.
 Qed.
 
 End AllMIS.

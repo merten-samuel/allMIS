@@ -511,17 +511,6 @@ Proof.
   apply H4. auto.
 Qed.
 
-Definition mkG_MIS :  (GenGraph T) -> list (list T) :=
-  fun G => 
-  (AllMIS _ Tdec G).
-                                                        
-
-Lemma mkG_MIS_spec : forall G,
-  MIS_set_gGraph G (mkG_MIS G).
-Proof.
-  (* Should be a lemma used to prove MIS_exists *)
-Admitted.
-
 Lemma MIS_exists : 
   forall G, 
     exists (l : list (list T)), MIS_set_gGraph G l.
@@ -555,7 +544,7 @@ Proof.
 Qed.
 
 Definition list_excised_MIS_step G x : list (list T) :=
-  mkG_MIS (removeVerts T Tdec G (x::(genNeighborhood G x))).
+  AllMIS _ Tdec (removeVerts T Tdec G (x::(genNeighborhood G x))).
 
 Definition list_excised_MIS G x :=
   map (fun k => list_excised_MIS_step G k) (x::genNeighborhood G x).
@@ -786,7 +775,7 @@ Proof.
       apply find_b_spec. auto.
       intros.
       unfold list_excised_MIS_step.
-      specialize (mkG_MIS_spec
+      specialize (AllMIS_spec _ Tdec
         (removeVerts T Tdec G (x0 :: genNeighborhood G x0))).
       intros. apply H3.
       apply listeq_preserves_MIS_E with (l1 := remove Tdec x0 (x0::x1)).
