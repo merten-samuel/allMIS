@@ -2147,7 +2147,10 @@ Proof.
         (r2 := ((I (length (gV T G) -2)) + (I (length (gV T G) -2)))).
     { assert (Hx: forall y0, MIS_set_gGraph (removeVerts T Tdec G (t::x::[])) y0 ->
                              (length x0 <= length y0)%nat).
-      { admit. }
+      { intros.
+        
+
+        admit. }
       destruct (MIS_exists (removeVerts T Tdec G (t::x::[]))) as [y0 Hy0].
       specialize (Hx _ Hy0).
       assert (INR(length x0) <= INR(length y0)).
