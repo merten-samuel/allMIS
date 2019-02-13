@@ -584,7 +584,41 @@ Proof.
       red; intros.
       simpl.
       intros Hnot.
-      admit.
+      specialize (gE_subset_l _ _ Hnot).
+      generalize (H _ H2).
+      generalize (H _ H3).      
+      destruct gE_subset_l.
+      { subst.
+        destruct (Tdec x0 x0); intros A B; try inversion B. clear B.
+        destruct (Tdec x0 y).
+        { clear A.
+          subst.
+          eapply gE_irref; eauto. }
+        rewrite orb_false_l in A.
+        unfold list_mem in A.
+        rewrite existsb_exists in A. destruct A as [z [Hz1 Hz2]].
+        destruct (Tdec z y); try inversion Hz2.
+        subst. clear Hz2.
+        clear e.
+        generalize (H1 _ H2).
+        generalize (H1 _ H3).
+        do 2 rewrite forallb_forall.
+        intros A B.
+        specialize (A _ H2).
+        specialize (B _ H3).
+        rewrite negb_true_iff in A, B.
+        clear A.
+        assert (B' : existsb (fun edge : T * T => Teq (fst edge) x0 && Teq (snd edge) y) gE = true).
+        { rewrite existsb_exists.
+          exists (x0,y).
+          split; auto.
+          simpl.
+          rewrite andb_true_iff.
+          split.
+          unfold Teq; destruct (Tdec _ _); auto.
+          unfold Teq; destruct (Tdec _ _); auto. }
+        rewrite B' in B; congruence.
+        apply n; auto. 
     }
     {
       admit.
