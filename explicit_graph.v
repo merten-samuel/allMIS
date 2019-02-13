@@ -2148,7 +2148,15 @@ Proof.
     { assert (Hx: forall y0, MIS_set_gGraph (removeVerts T Tdec G (t::x::[])) y0 ->
                              (length x0 <= length y0)%nat).
       { intros.
-        
+        apply excise_0_degree_vert with (G:=removeVerts T Tdec G [t]) (x:=x) (l:=[]).
+        unfold removeVerts.
+        simpl.
+        SearchAbout remove.
+        apply remove_mem.
+        split.
+        exact H2.
+        unfold neighborhood_E in H4.
+        (* Prove that x is still in the graph *) 
 
         admit. }
       destruct (MIS_exists (removeVerts T Tdec G (t::x::[]))) as [y0 Hy0].
