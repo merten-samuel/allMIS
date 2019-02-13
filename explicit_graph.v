@@ -3,6 +3,7 @@ Require Import moon_lemma.
 Require Import graph_basics.
 Require Import all_MIS_unique.
 Require Import GenGraph.
+Require Import GenGraphAllMIS.
 Close Scope R_scope.
 
 Section GraphInequalities.
@@ -510,19 +511,23 @@ Proof.
   apply H4. auto.
 Qed.
 
-(*TODO:  Fill me in with MIS TRANSFORM *)
-Variable mkG_MIS :  (GenGraph T) -> list (list T).
+Definition mkG_MIS :  (GenGraph T) -> list (list T) :=
+  fun G => 
+  (AllMIS _ Tdec G).
+                                                        
 
 Lemma mkG_MIS_spec : forall G,
   MIS_set_gGraph G (mkG_MIS G).
 Proof.
-
+  (* Should be a lemma used to prove MIS_exists *)
 Admitted.
 
 Lemma MIS_exists : 
   forall G, 
     exists (l : list (list T)), MIS_set_gGraph G l.
-Proof. intros. exists (mkG_MIS G). apply mkG_MIS_spec. Qed.
+Proof. 
+  apply MIS_exists; auto.
+Qed.
 
 Definition BigSum_nat {X : Type} (l : list X) (f : X -> nat):=
   fold_right plus 0 (map f l).
@@ -833,90 +838,6 @@ Proof.
   }
 Qed.
 Print Assumptions WoodIneq_aux.
-(* Possible prove of ALL_MIS exists *)
-Lemma all_subsets_list_subset :
-  forall  (l l' : list T),
-    InA (equivlistA eq) l' (fintype.all_subsets l) <-> (forall x, InA eq x l' -> InA eq x l).
-Proof.
-Admitted.
-
-
-Lemma no_dups_powerset :
-  forall (A : Type) (l: list T),
-    NoDup l -> 
-    NoDupA (equivlistA eq)  (fintype.all_subsets l).
-Proof.
-  Admitted.
-
-Definition MaximalIndSetProg (G : @GenGraph T) (x : list T) :
-  bool.
-  Admitted.
-
-Lemma MaxProg_iff :forall G x, MaximalIndSetProg G x = true <->
-                          MaximalIndSet_E G x.
-Proof.
-  Admitted.
-
-Definition AllMIS (G : @GenGraph T) :=
-  filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
-
-(*Lemma MIS_exists : 
-  forall G, 
-    exists (l : list (list T)), MIS_set_gGraph G l.
-Proof.
-  intros.
-  exists (AllMIS G).
-  unfold AllMIS.
-  constructor.
-  intros.
-  apply filter_In in H.
-  destruct H.
-  apply MaxProg_iff.
-  auto.
-  apply filter_NoDupA.
-  assert (NoDup (gV T G)).
-  {
-    destruct G; auto.
-  }
-  {
-    apply no_dups_powerset in H; auto.
-  }
-  intros.
-  apply filter_InA.
-  {
-    red.
-    red.
-    intros.
-    (* I think this will work *)
-    admit.
-  }
-  split.
-  {
-    destruct G.
-    simpl in *.
-    assert (forall x0 : T, In x0 x -> In x0 gV0).
-    {
-      inversion H; intuition; simpl in *; subst.
-      inversion H0; subst.
-      simpl in *.
-      unfold valid_E in H3.
-      simpl in *.
-      clear -H3 H2.
-      apply H3.
-      auto.
-    }
-    apply all_subsets_list_subset; auto.
-    intros.
-    rewrite In_InAeq_iff.
-    apply H0; auto.
-    apply In_InAeq_iff.
-    auto.
-  }
-  {
-    apply MaxProg_iff; auto.
-  }
-Admitted.
- *)
 
 Require Import Reals.
 Require Import Omega.

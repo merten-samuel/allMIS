@@ -428,7 +428,7 @@ Theorem MIS_bounds_lGraph : forall G l
 Proof.
   intros.
   apply All_MIS_preserved_lGraph_to_GenGraph in H.
-  pose proof (@MIS_Bounds nat Nat.eq_dec mkG_MIS (GenGraph_of G) l H);
+  pose proof (@MIS_Bounds nat Nat.eq_dec (GenGraph_of G) l H);
     auto.
   assert (length (gV nat (GenGraph_of G)) = lV G); auto.
   {
