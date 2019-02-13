@@ -2146,11 +2146,16 @@ Proof.
     apply Rle_trans with
         (r2 := ((I (length (gV T G) -2)) + (I (length (gV T G) -2)))).
     { assert (Hx: forall y0, MIS_set_gGraph (removeVerts T Tdec G (t::x::[])) y0 ->
-                             length x0 = length y0).
+                             (length x0 <= length y0)%nat).
       { admit. }
       destruct (MIS_exists (removeVerts T Tdec G (t::x::[]))) as [y0 Hy0].
       specialize (Hx _ Hy0).
-      rewrite Hx.
+      assert (INR(length x0) <= INR(length y0)).
+      apply le_INR.
+      exact Hx.
+      apply Rle_trans with (r2:= INR(length y0) + INR (length x1)).
+      fourier.
+      
       apply Rplus_le_compat.
       { 
       apply Rle_trans with
@@ -2164,16 +2169,16 @@ Proof.
       simpl.
       left; reflexivity.
       assert (List.In (t, x) (gE T G)).
-      apply H9.
-      exact H10.
-      apply gE_subset_l with (y:=x).
+      apply H10.
       exact H11.
+      apply gE_subset_l with (y:=x).
+      exact H12.
       unfold removeVerts.
       simpl.
       assert ((length (remove Tdec t (gV T G))) < length (gV T G))%nat.
       { 
         apply remove_length_in.
-        exact H9.
+        exact H10.
       }
       { eapply Nat.le_trans.
         apply remove_length.
