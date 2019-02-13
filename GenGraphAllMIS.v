@@ -618,11 +618,10 @@ Proof.
           unfold Teq; destruct (Tdec _ _); auto.
           unfold Teq; destruct (Tdec _ _); auto. }
         rewrite B' in B; congruence.
-        apply n; auto. 
-    }
-    {
+        apply n; auto. }
       admit.
     }
+    admit.
   }
   inversion H.
   unfold MaximalIndSetProg.
