@@ -751,6 +751,115 @@ Proof.
   omega.
 Qed.
 
+Lemma remove_length_le: forall l t,
+  length (remove Tdec t l) <= length l.
+Proof.
+  induction l. simpl. auto.
+  intros. simpl. destruct Tdec; specialize (IHl t);
+  subst; simpl; omega.
+Qed.
+
+Lemma remove_length_lt : forall l t,
+  In t l -> length (remove Tdec t l) < length l.
+Proof.
+  induction l. intros. inversion H.
+  intros. destruct H. subst. simpl. destruct Tdec.
+  subst. specialize (remove_length_le l t); intros.
+  omega. congruence. simpl. destruct Tdec; simpl;
+  specialize (IHl _ H); omega.
+Qed.
+
+Lemma removeList_length_le: forall l l',
+  length (removeList l' l) <= length l'.
+Proof.
+  induction l; intros. simpl. omega.
+  simpl. etransitivity. apply IHl. 
+  apply remove_length_le.
+Qed.
+
+Lemma remove_commute : 
+  forall l t1 t2,
+    remove Tdec t1 (remove Tdec t2 l) = 
+    remove Tdec t2 (remove Tdec t1 l).
+Proof.
+  induction l. simpl. auto.
+  intros. simpl. do 2 destruct Tdec; subst.
+  auto. try rewrite IHl. simpl.
+  destruct Tdec; try congruence. 
+  simpl. destruct Tdec; try congruence.
+  simpl. do 2 destruct Tdec; try congruence.
+Qed. 
+
+Lemma removeList_remove_commute : 
+  forall l' l t, 
+    remove Tdec t (removeList l l') = removeList (remove Tdec t l) l'.
+Proof.
+  induction l'.
+  intros. simpl.
+  auto. intros. simpl. rewrite IHl'. rewrite remove_commute.
+  auto.
+Qed.
+
+Lemma removeList_length_lt: forall l l',
+  (exists x, In x l /\ In x l') ->
+  length (removeList l' l) < length l'.
+Proof.
+  induction l; intros.
+  do 2 destruct H. inversion H.
+  do 3 destruct H.
+  subst. simpl.
+  eapply Nat.le_lt_trans.
+  apply removeList_length_le.
+  apply remove_length_lt. auto.
+  simpl.
+  eapply Nat.le_lt_trans.
+  2:{ apply IHl. exists x; split; auto. }
+  rewrite <- removeList_remove_commute.
+  apply remove_length_le.
+Qed.
+
+Lemma length_remove_in :
+  forall l t,
+    NoDup l -> 
+    In t l ->
+      S (length (remove Tdec t l)) = length l.
+Proof.
+  induction l. 
+  intros. inversion H0.
+  intros. destruct H0.
+  simpl. subst. destruct Tdec.
+  rewrite remove_id. auto.
+  inversion H. subst. auto.
+  congruence.
+  simpl. destruct Tdec.
+  inversion H. subst. congruence.
+  simpl. erewrite <- IHl.
+  eauto. inversion H. subst. auto.
+  auto.
+Qed.
+
+Lemma length_removeList_all_in :
+forall l' l,
+  NoDup l ->
+  NoDup l' ->
+  (forall x, In x l' -> In x l) ->
+length (removeList l l') + length l' = length l.
+Proof.
+  induction l'. intros.
+  auto. intros. simpl.
+  rewrite <- removeList_remove_commute.
+  rewrite <- plus_Snm_nSm.
+  erewrite -> length_remove_in.
+  apply IHl'. inversion H0. auto.
+  inversion H0. auto.
+  intros. apply H1. right. auto.
+  apply removeList_NoDup. auto.
+  apply removeList_mem. split.
+  apply H1. left. auto. inversion H0.
+  subst. intros. intros Hcontra. apply H4.
+  subst. auto.
+Qed.
+
 Lemma NoDup_subset_length :
   forall (l1 l2 : list T),
     NoDup l1 ->
