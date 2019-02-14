@@ -619,6 +619,13 @@ Proof.
   destruct (Tdec x x); auto.
 Qed.
 
+Lemma Teq_eq (x y: T): Teq x y = true -> x=y.
+Proof.
+  unfold Teq.
+  destruct (Tdec x y); auto.
+  inversion 1.
+Qed.
+
 Lemma MaxProg_iff :forall G x, MaximalIndSetProg G x = true <->
                           MaximalIndSet_E G x.
 Proof.
@@ -721,7 +728,59 @@ Proof.
       specialize (A (x0,y) Hnot). simpl in A. rewrite negb_true_iff in A.
       rewrite andb_false_iff in A. exfalso. destruct A as [A|A]; rewrite Teq_refl in A; congruence. }
     simpl.
-    admit.
+    intros x0 [A|A]; intros B.
+    { subst.
+      specialize (H0 x0 (or_introl _ eq_refl)).
+      assert (C: negb (list_mem x0 x) = true).
+      { unfold list_mem; rewrite existsb_demorgan, negb_involutive, forallb_forall.
+        intros x1 Hin.
+        destruct (Tdec x1 x0); auto.
+        subst. exfalso; apply B; auto.
+      }
+      rewrite C in H0.
+      rewrite existsb_exists in H0.
+      destruct H0 as [[a b] [X Y]].
+      simpl in Y.
+      do 3 rewrite andb_true_iff in Y.
+      destruct Y as [[[Z1 Z2] Y1b] Y2].
+      apply Teq_eq in Z1.
+      apply Teq_eq in Z2.
+      subst.
+      clear Z2.
+      exists b.
+      split.
+      { right.
+        destruct (gE_subset_l _ _ (gE_symm _ _ X)); auto.
+        subst. exfalso; apply (gE_irref _ X). }
+      split; auto.
+      unfold list_mem in Y1b.
+      rewrite existsb_exists in Y1b. destruct Y1b as [xx [Q R]].
+      destruct (Tdec xx b). subst. auto. congruence. }
+    { specialize (H0 x0 (or_intror _ A)).
+      assert (C: negb (list_mem x0 x) = true).
+      { unfold list_mem; rewrite existsb_demorgan, negb_involutive, forallb_forall.
+        intros x1 Hin.
+        destruct (Tdec x1 x0); auto.
+        subst. exfalso; apply B; auto.
+      }
+      rewrite C in H0.
+      rewrite existsb_exists in H0.
+      destruct H0 as [[aa b] [X Y]].
+      simpl in Y.
+      do 3 rewrite andb_true_iff in Y.
+      destruct Y as [[[Z1 Z2] Y1b] Y2].
+      apply Teq_eq in Z1.
+      apply Teq_eq in Z2.
+      subst.
+      clear Z2.
+      exists b.
+      split.
+      { apply (gE_subset_l _ _ (gE_symm _ _ X)).
+      }
+      split; auto.
+      unfold list_mem in Y1b.
+      rewrite existsb_exists in Y1b. destruct Y1b as [xx [Q R]].
+      destruct (Tdec xx b). subst. auto. congruence. }
   }
   inversion H.
   unfold MaximalIndSetProg.
@@ -821,7 +880,7 @@ Proof.
       }
     }
   }
-Admitted.
+Qed.
 
 Definition AllMIS (G : @GenGraph T) :=
   filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
