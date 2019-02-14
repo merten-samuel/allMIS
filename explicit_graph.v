@@ -1413,24 +1413,90 @@ Proof.
         apply remove_length.
         omega.
       }
-      (* Stuck here!!!! ****)
-      (* Going home ****)
+      
+      assert (length(removeList T Tdec (remove Tdec t (gV T G))
+      (genNeighborhood G t))+ length(genNeighborhood G t)=length (remove Tdec t (gV T G)))%nat.
+      SearchAbout removeList.
+      apply length_removeList_all_in.
+      SearchAbout NoDup.
+      apply remove_NoDup.
+      apply gV_simplset.
+      SearchAbout NoDup.
+      apply genNeighborhood_spec2.
+      SearchAbout genNeighborhood.
+      assert (neighborhood_E T G t (genNeighborhood G t)).
+      apply genNeighborhood_spec1.
+      intros.
+      unfold neighborhood_E in H20.
+      apply H20 in H21.
+      assert (x2 <> t).
+      intro.
+      rewrite H22 in H21.
+      assert (~List.In (t,t) (gE T G)).
+    
+      apply gE_irref.
+      contradiction.
 
-      assert (forall l1 l2 x, length(removeList T Tdec l2 (x::l1)) <= length(removeList T Tdec l2 l1))%nat.
+      SearchAbout remove.
+      apply remove_mem.
+      split.
+      apply gE_subset_l with (y:=t).
+      exact H21.
+      exact H22.
+      assert (length(remove Tdec t (gV T G)) < length(gV T G))%nat.
+      apply remove_length_in.
+      exact H11.
+      assert (forall (x:T) (l: list T), List.In x l -> 1<=length l)%nat.
       {
-        induction l1.
+        induction l0.
+        {
+          intros.
+          simpl in H22.
+          contradiction.
+        }
+        intros.
         simpl.
-        intros.      
-        apply remove_length.
-        simpl.
-        admit.
+        omega.
       }
+       
+ 
+      assert (1<=length (genNeighborhood G t))%nat.
+      apply H22 with (x:=x).
+      auto.
+      
+      assert (length(gV T (removeVerts T Tdec G (t :: (genNeighborhood G t)))) <= length(gV T G) -2)%nat.
+      simpl.
+      omega.  
+      
+      assert (INR(length x1) <= I(length(gV T (removeVerts T Tdec G (t :: (genNeighborhood G t)))))).
+      apply H.
+      unfold removeVerts.
+      simpl.
+      omega.
+      exact H8.
+      assert (I(length
+           (gV T
+              (removeVerts T Tdec G
+                 (t :: genNeighborhood G t)))) <= I(length (gV T G) - 2)).
+      apply I_monontonic2.
+      auto.
+      apply Rle_trans with (r2:=I
+        (length
+           (gV T
+              (removeVerts T Tdec G
+                 (t :: genNeighborhood G t))))).
+      auto.
+      auto.
+      
 
-      assert (forall l1 ,(forall l2 x, List.In x l1 -> List.In x l2 -> length(removeList T Tdec l2 l1) < length l2)%nat). 
-      {
-        admit.
-      }
-    admit.
+
+
+      
+      
+
+
+      
+      
     }    
 
       (*  induction l1.
