@@ -1646,19 +1646,93 @@ Proof.
     do 3 destruct H2. destruct H4. destruct H5.
     destruct (MIS_exists (removeVerts T Tdec G (x :: Datatypes.nil))).
     destruct (MIS_exists (removeVerts T Tdec G (x :: genNeighborhood G x))).
+   assert (length(remove Tdec x (gV T G)) < length(gV T G))%nat.
+      apply remove_length_in.
+      exact H2.
+    assert (length(removeList T Tdec (remove Tdec x (gV T G))
+      (genNeighborhood G x))+ length(genNeighborhood G x)=length (remove Tdec x (gV T G)))%nat.
+    {   
+       SearchAbout removeList.
+      apply length_removeList_all_in.
+      SearchAbout NoDup.
+      apply remove_NoDup.
+      apply gV_simplset.
+      SearchAbout NoDup.
+      apply genNeighborhood_spec2.
+      SearchAbout genNeighborhood.
+      assert (neighborhood_E T G x (genNeighborhood G x)).
+      apply genNeighborhood_spec1.
+      intros.
+      unfold neighborhood_E in H10.
+      apply H10 in H11.
+      assert (x3 <> x).
+      intro.
+      rewrite H12 in H11.
+      assert (~List.In (x,x) (gE T G)).
+    
+      apply gE_irref.
+      contradiction.
+      apply remove_mem.
+      split.
+      apply gE_subset_l with (y:=x).
+      exact H11.
+      exact H12.
+    }
+   assert (length(remove Tdec x (gV T G)) < length(gV T G))%nat.
+      apply remove_length_in.
+      exact H2. 
     eapply Rle_trans. apply le_INR.
     apply Prop4_vatter with (G := G) (x := x) (Nx := genNeighborhood G x).
     auto. apply genNeighborhood_spec1. auto. eauto. eauto.
     rewrite plus_INR.
     apply Rle_trans with
       (r2 := I (length (gV T G) - 1) + I (length (gV T G) - 4)).
-    apply Rplus_le_compat;
-    eapply Rle_trans. apply H. admit. eauto.
-    admit.  
-    apply H. eauto. admit. eauto. eauto. admit.
-    (* Nate's inequalities *)
+    (* assert (length(x1) < length(gV T G))%nat.*)
+    assert (INR (length x1) <= I(length (gV T (removeVerts T Tdec G [x])))).
+    apply H.
+    unfold removeVerts.
+    simpl.
+    omega.
+    exact H7.        
+
+    assert (INR(length x2) <= I(length(gV T (removeVerts T Tdec G (x :: genNeighborhood G x))))).
+    apply H.
+
+
+    unfold removeVerts.
+    simpl.
+    omega.
+    exact H8.
+    assert (I(length
+           (gV T
+              (removeVerts T Tdec G
+                 (x :: genNeighborhood G x))))<=I(length(gV T G) -4)).
+    apply I_monontonic2.
+    unfold removeVerts.
+    simpl.
+    assert (3<=length (genNeighborhood G x))%nat.
+    {
+      assert (neighborhood_E T G x (genNeighborhood G x)).
+      apply genNeighborhood_spec1.
+      SearchAbout neighborhood_E.
+      assert (length (genNeighborhood G x) = length x0).
+      apply neighborhood_E_NoDup_length_unique with (G:=G) (x:=x).
+      apply genNeighborhood_spec2.
+      exact H5.
+      exact H14.
+      exact H4.
+      omega.
+    }
+    omega.
+    assert (I (length (gV T (removeVerts T Tdec G [x]))) <= I(length(gV T G)-1)).
+    apply I_monontonic2.
+    unfold removeVerts.
+    simpl.
+    omega.
+    fourier.
+   
     apply I_lower_bound_2; auto.
-  }
+  } (* Done with case d>=3 *)
   {
   {
     case_eq (gV T G); intros. rewrite H4 in H0. simpl in H0.
