@@ -211,6 +211,18 @@ Proof.
   intros Hy; apply (all_in_no_dup (t::nil)); auto.
 Qed.  
 
+Lemma MIS_Bounds_2_verts_aux1 :
+  forall G (l : list (list T)) t1 t2,
+    MIS_set_gGraph G l -> 
+    (gV _ G) = t1::t2::nil ->
+    eqlistA eq l ((t1::t2::nil)::nil) \/
+    eqlistA eq l ((t2::t1::nil)::nil) \/
+    eqlistA eq l ((t1::nil)::(t2::nil)::nil) \/
+    eqlistA eq l ((t2::nil)::(t1::nil)::nil).
+Proof.
+Admitted.
+
+
 Lemma MIS_Bounds_2_verts :
   forall G (l : list (list T)) t1 t2,
     MIS_set_gGraph G l -> 
@@ -218,30 +230,12 @@ Lemma MIS_Bounds_2_verts :
     length l <= 2.
 Proof.
   intros G l t1 t2 H H2.
-  inversion H. clear H.
-  destruct G as [gV0 gE0
-           gE_irref0 gE_symm0 gV_simplset0 gE_simplset0 gE_subset_l0
-                ]; simpl in *.
-  subst gV0.
-  destruct gE0.
-  { assert (Hx: eqlistA eq l ((t1 :: nil) :: (t2 :: nil) :: nil) \/
-                eqlistA eq l ((t2 :: nil) :: (t1 :: nil) :: nil)).
-    { admit. }      
-    destruct Hx as [Hx|Hx].
-    { 
-      apply eqlistA_length in Hx.
-      rewrite Hx; auto.
-    }
-    apply eqlistA_length in Hx.
-    rewrite Hx; auto.
-  }
-  assert (Hx: eqlistA eq l ((t1 :: t2 :: nil) :: nil) \/
-              eqlistA eq l ((t2 :: t1 :: nil) :: nil)).
-  {
-    admit.
-  }
-  destruct Hx as [Hx|Hx]; apply eqlistA_length in Hx; rewrite Hx; auto.
-Admitted.
+  destruct (MIS_Bounds_2_verts_aux1 _ _ _ _ H H2) as [A|[A|[A|A]]].
+  { apply eqlistA_length in A; rewrite A; auto. }
+  { apply eqlistA_length in A; rewrite A; auto. }
+  { apply eqlistA_length in A; rewrite A; auto. }
+  apply eqlistA_length in A; rewrite A; auto.
+Qed.  
 
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
