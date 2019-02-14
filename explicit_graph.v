@@ -1511,6 +1511,6 @@ Proof.
     eapply gE_subset_l. eauto. eauto.
     auto.
   }
-}
-Admitted.
+}}
+Qed.
 End GraphInequalities.
