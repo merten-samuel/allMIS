@@ -527,6 +527,98 @@ Proof.
   }
 Qed.
 
+Lemma forallb_false1
+      (f: T -> bool)
+      (l: list T) :
+  forallb f l = false ->
+  (exists x: T, In x l /\ f x = false).
+Proof.
+  induction l.
+  { inversion 1. }
+  simpl.
+  rewrite andb_false_iff.
+  intros H.
+  destruct H.
+  { exists a; split; auto. }
+  destruct (IHl H) as [x [H3 H4]].
+  exists x; split; auto.
+Qed.
+
+Lemma forallb_false2
+      (f: T -> bool)
+      (l: list T) :
+  (exists x: T, In x l /\ f x = false) -> 
+  forallb f l = false.
+Proof.
+  induction l.
+  { intros [x [A B]]. inversion A. }
+  intros [x [A B]].
+  simpl.
+  inversion A.
+  { subst.
+    rewrite B; auto. }
+  rewrite andb_false_iff; right.
+  apply IHl.
+  exists x.
+  split; auto.
+Qed.  
+
+Lemma forallb_false
+      (f: T -> bool)
+      (l: list T) :
+  forallb f l = false <->
+  (exists x: T, In x l /\ f x = false).
+Proof. split. apply forallb_false1. apply forallb_false2. Qed.
+
+Lemma forallb_equivlistA
+      (f: T -> bool)
+      (l1 l2: list T)
+      (H: equivlistA eq l1 l2) :
+      forallb f l1 = forallb f l2.
+Proof.
+  destruct (forallb f l2) eqn:H2.
+  { rewrite forallb_forall; intros x Hin.
+    { destruct (H x) as [A B].
+      rewrite forallb_forall in H2.
+      apply H2; auto.
+      rewrite <-In_InAeq_iff; apply A; rewrite In_InAeq_iff; auto. }}
+  rewrite forallb_false in H2.
+  destruct H2 as [x [Hin H3]].
+  rewrite forallb_false.
+  exists x; split; auto.
+  destruct (H x); rewrite <-In_InAeq_iff; apply H1; rewrite In_InAeq_iff; auto.
+Qed.  
+
+Lemma existsb_demorgan
+      (A: Type)
+      (f: A -> bool)
+      (l: list A) :
+  existsb f l = negb (forallb (fun x => negb (f x)) l).
+Proof.
+  induction l; auto.
+  simpl.
+  rewrite negb_andb, negb_involutive.
+  f_equal.
+  rewrite IHl; auto.
+Qed.
+
+Lemma existsb_equivlistA
+      (f: T -> bool)
+      (l1 l2: list T)
+      (H: equivlistA eq l1 l2) :
+      existsb f l1 = existsb f l2.
+Proof.
+  do 2 rewrite existsb_demorgan.
+  f_equal.
+  apply forallb_equivlistA; auto.
+Qed.  
+
+Lemma Teq_refl (x: T): Teq x x = true.
+Proof.
+  unfold Teq.
+  destruct (Tdec x x); auto.
+Qed.
+
 Lemma MaxProg_iff :forall G x, MaximalIndSetProg G x = true <->
                           MaximalIndSet_E G x.
 Proof.
@@ -621,8 +713,13 @@ Proof.
           unfold Teq; destruct (Tdec _ _); auto. }
         rewrite B' in B; congruence.
         apply n; auto. }
-      admit.
-      }
+      generalize (H1 _ H2). intros A.
+      generalize (H1 _ H3). intros B.      
+      rewrite forallb_forall in A, B.
+      specialize (A _ H3).
+      rewrite existsb_demorgan, negb_involutive, forallb_forall in A.
+      specialize (A (x0,y) Hnot). simpl in A. rewrite negb_true_iff in A.
+      rewrite andb_false_iff in A. exfalso. destruct A as [A|A]; rewrite Teq_refl in A; congruence. }
     simpl.
     admit.
   }
@@ -728,91 +825,6 @@ Admitted.
 
 Definition AllMIS (G : @GenGraph T) :=
   filter (fun x => MaximalIndSetProg G x) (fintype.all_subsets (gV _ G)).
-
-Lemma forallb_false1
-      (f: T -> bool)
-      (l: list T) :
-  forallb f l = false ->
-  (exists x: T, In x l /\ f x = false).
-Proof.
-  induction l.
-  { inversion 1. }
-  simpl.
-  rewrite andb_false_iff.
-  intros H.
-  destruct H.
-  { exists a; split; auto. }
-  destruct (IHl H) as [x [H3 H4]].
-  exists x; split; auto.
-Qed.
-
-Lemma forallb_false2
-      (f: T -> bool)
-      (l: list T) :
-  (exists x: T, In x l /\ f x = false) -> 
-  forallb f l = false.
-Proof.
-  induction l.
-  { intros [x [A B]]. inversion A. }
-  intros [x [A B]].
-  simpl.
-  inversion A.
-  { subst.
-    rewrite B; auto. }
-  rewrite andb_false_iff; right.
-  apply IHl.
-  exists x.
-  split; auto.
-Qed.  
-
-Lemma forallb_false
-      (f: T -> bool)
-      (l: list T) :
-  forallb f l = false <->
-  (exists x: T, In x l /\ f x = false).
-Proof. split. apply forallb_false1. apply forallb_false2. Qed.
-
-Lemma forallb_equivlistA
-      (f: T -> bool)
-      (l1 l2: list T)
-      (H: equivlistA eq l1 l2) :
-      forallb f l1 = forallb f l2.
-Proof.
-  destruct (forallb f l2) eqn:H2.
-  { rewrite forallb_forall; intros x Hin.
-    { destruct (H x) as [A B].
-      rewrite forallb_forall in H2.
-      apply H2; auto.
-      rewrite <-In_InAeq_iff; apply A; rewrite In_InAeq_iff; auto. }}
-  rewrite forallb_false in H2.
-  destruct H2 as [x [Hin H3]].
-  rewrite forallb_false.
-  exists x; split; auto.
-  destruct (H x); rewrite <-In_InAeq_iff; apply H1; rewrite In_InAeq_iff; auto.
-Qed.  
-
-Lemma existsb_demorgan
-      (f: T -> bool)
-      (l: list T) :
-  existsb f l = negb (forallb (fun x => negb (f x)) l).
-Proof.
-  induction l; auto.
-  simpl.
-  rewrite negb_andb, negb_involutive.
-  f_equal.
-  rewrite IHl; auto.
-Qed.
-
-Lemma existsb_equivlistA
-      (f: T -> bool)
-      (l1 l2: list T)
-      (H: equivlistA eq l1 l2) :
-      existsb f l1 = existsb f l2.
-Proof.
-  do 2 rewrite existsb_demorgan.
-  f_equal.
-  apply forallb_equivlistA; auto.
-Qed.  
 
 Lemma MaximalIndSetProg_equivlistA
   (G : GenGraph T)
