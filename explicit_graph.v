@@ -211,7 +211,6 @@ Proof.
   intros Hy; apply (all_in_no_dup (t::nil)); auto.
 Qed.  
 
-
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
 
@@ -295,6 +294,78 @@ Proof.
   apply NoDup_incl_length; auto;
   intros t H3. apply H2. apply H1. auto.
   apply H1. apply H2. auto.
+Qed.
+
+Lemma MIS_Bounds_2_verts :
+  forall G (l : list (list T)) t1 t2,
+    MIS_set_gGraph G l -> 
+    (gV _ G) = t1::t2::nil ->
+    length l <= 2.
+Proof.
+  intros.
+  generalize Prop4_vatter. intros.
+  specialize (H1 G l
+                (AllMIS _ Tdec (removeVerts T Tdec G (t1 :: nil)))
+                (AllMIS _ Tdec (removeVerts T Tdec G
+                  (t1 :: genNeighborhood G t1)))).
+  assert (In t1 (gV T G)). rewrite H0. left. auto.
+  assert (neighborhood_E T G t1 (genNeighborhood G t1)).
+    apply genNeighborhood_spec1.
+  specialize (H1 _ _ H2 H3 H).
+  etransitivity.
+  apply H1.
+  apply AllMIS_spec.
+  apply AllMIS_spec.
+  assert (length (AllMIS T Tdec (removeVerts T Tdec G (t1 :: nil))) = 1).
+  eapply MIS_bounds_1_verts. apply AllMIS_spec.
+  simpl. rewrite H0. simpl.
+  destruct Tdec. destruct Tdec. 
+  apply False_rec. 
+  generalize (gV_simplset _ G). intros.
+  rewrite H0 in H4. inversion H4. 
+  subst. apply False_rec. apply H7.
+  left. auto. auto.
+  congruence. 
+  rewrite H4.
+  assert (genNeighborhood G t1 = t2 :: nil \/ genNeighborhood G t1 = nil).
+  assert (forall x, In x (genNeighborhood G t1) -> x = t2).
+  intros. 
+  specialize (genNeighborhood_spec1 G t1). intros.
+  specialize (genNeighborhood_spec2 G t1). intros.
+  apply H6 in H5.
+  destruct (Tdec x t2). auto.
+  assert (In x (gV T G)). eapply gE_subset_l. eauto.
+  rewrite H0 in H8. inversion H8. subst.
+  apply gE_irref in H5. inversion H5.
+  inversion H9. auto. inversion H10.
+  specialize (genNeighborhood_spec1 G t1). intros.
+  specialize (genNeighborhood_spec2 G t1). intros.
+  remember (genNeighborhood G t1) as neigh.
+  destruct neigh. right. auto. 
+  left. f_equal. apply H5. left. auto.
+  destruct neigh. auto. inversion H7. subst.
+  assert (t = t2). apply H5. left. auto.
+  assert (t0 = t2). apply H5. right. left. auto.
+  apply False_rec. apply H10. subst.
+  left. auto.
+  destruct H5. rewrite H5.
+  erewrite MIS_Bounds_0_verts.
+  omega. apply AllMIS_spec. simpl.
+  rewrite H0. 
+  simpl. destruct Tdec; try congruence.
+  destruct Tdec; try congruence; auto.
+  simpl.
+  destruct Tdec. auto. congruence. 
+  erewrite MIS_bounds_1_verts.
+  omega. apply AllMIS_spec.
+  rewrite H5. simpl. 
+  rewrite H0. simpl. destruct Tdec.
+  destruct Tdec.
+  generalize (gV_simplset _ G). intros.
+  rewrite H0 in H6. inversion H6. 
+  subst. apply False_rec. apply H9. left. auto.
+  auto.
+  congruence.
 Qed.
 
 Lemma map_ind_cases : 
@@ -783,62 +854,6 @@ Proof.
     simpl. destruct find_b; simpl; omega.
   }
 Qed.
-Print Assumptions WoodIneq_aux.
-
-Lemma MIS_Bounds_2_verts :
-  forall G (l : list (list T)) t1 t2,
-    MIS_set_gGraph G l -> 
-    (gV _ G) = t1::t2::List.nil ->
-    length l <= 2.
-Proof.
-  intros G l t1 t2 H H2.
-  eapply Nat.le_trans.
-  apply (WoodIneq_aux l G t1); auto.
-  { rewrite H2; left; auto. }
-  unfold list_excised_MIS.
-  unfold list_excised_MIS_step.
-  simpl.
-  unfold BigSum_nat.
-  simpl.
-  assert (X: genNeighborhood G t1 = nil \/
-             genNeighborhood G t1 = t2::nil).
-  {  admit. }
-  destruct X as [X|X].
-  { rewrite X.
-    simpl.
-    rewrite <-plus_n_O.
-    generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t1::nil))); intro Y.
-    apply (MIS_bounds_1_verts _ _ t2) in Y; eauto.
-    { rewrite Y; omega. }
-    simpl; rewrite H2; simpl.
-    destruct (Tdec t1 t1); try congruence. clear e.
-    destruct (Tdec t1 t2); auto.
-    subst t1. generalize (gV_simplset _ G). rewrite H2. inversion 1.
-    subst. exfalso; apply H4; left; auto. }
-  rewrite X; simpl.
-  assert (length (AllMIS T Tdec (removeVerts T Tdec G (t1 :: t2 :: nil))) = 1) as ->.
-  { generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t1 :: t2 :: nil))). intro Y.
-    apply MIS_Bounds_0_verts in Y; auto.
-    simpl; rewrite H2; simpl.
-    destruct (Tdec t1 t1); try congruence. clear e.
-    destruct (Tdec t1 t2); auto.
-    simpl. destruct (Tdec t2 t2); try congruence. clear e. auto. }
-  rewrite <-plus_n_O.
-  assert (length (AllMIS T Tdec (removeVerts T Tdec G (t2 :: genNeighborhood G t2))) = 1) as ->.
-  { generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t2 :: t1 :: nil))). intro Y.
-    apply MIS_Bounds_0_verts in Y; auto.
-    { assert (genNeighborhood G t2 = t1 :: nil) as ->.
-      { admit. }
-      auto. }
-    simpl; rewrite H2; simpl.
-    destruct (Tdec t1 t1); try congruence. clear e.
-    destruct (Tdec t2 t1); auto.
-    { destruct (Tdec t2 t2); try congruence. auto. }
-    simpl.
-    destruct (Tdec t1 t1); try congruence. clear e.
-    destruct (Tdec t2 t2); try congruence. auto. }
-  omega.
-Admitted. 
 
 Require Import Reals.
 Require Import Omega.
