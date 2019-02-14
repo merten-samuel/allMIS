@@ -1427,9 +1427,9 @@ Proof.
     apply Rplus_le_compat;
     eapply Rle_trans. apply H. admit. eauto.
     admit.  
-    apply H. admit. eauto. eauto. admit.
+    apply H. eauto. admit. eauto. eauto. admit.
     (* Nate's inequalities *)
-    admit.
+    apply I_lower_bound_2; auto.
   }
   {
   {
@@ -1502,7 +1502,6 @@ Proof.
     eapply gE_subset_l. eauto. eauto.
     auto.
   }
-
 }
 Admitted.
 End GraphInequalities.
