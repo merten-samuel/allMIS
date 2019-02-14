@@ -548,17 +548,6 @@ Proof.
 Qed.
 
 
-(*
-Fixpoint list_excised_MIS_aux G l :=
-  match l with 
-  | nil => nil
-  | cons x l' => (list_excised_MIS_step G x) ++ (list_excised_MIS_aux G l')
-  end.
-
-Definition list_excised_MIS G x : list (list T) :=
-  list_excised_MIS_aux G (x::(genNeighborhood G x)).
-*)
-
 Fixpoint find_b x l :=
 match l with
 | nil => false
@@ -898,12 +887,6 @@ Proof.
       }
 Qed.
 
-(* Lemma Neighbor_NEQ:
-  forall G l x y,
-  (neighborhood_E G x l) -> (InA y l) -> (x <> y).
-Proof. *)
-  
-
 Lemma MIS_Bounds :
   forall G (l : list (list T)),
     MIS_set_gGraph G l -> 
@@ -989,7 +972,6 @@ Proof.
       }
       
     }
-    SearchAbout INR.
     replace 1 with (INR 1).
     apply le_INR.
     exact H6.
@@ -1005,79 +987,9 @@ Proof.
     field.
     rewrite H2.
     symmetry.
-    SearchAbout Rpower.
     apply Rpower_O.
     fourier.
     }
-    (* unfold mod.
-    
-        rewrite 
-      induction 
-      apply 
-      rewrite H12 in H9.
-      assert (List.In x (gV T G) ->
-     ~ List.In x l1 ->
-     exists y : T,
-       List.In y (gV T G) /\ List.In y l1 /\ List.In (x, y) (gE T G)).
-      apply H7.
-      destruct H8.
-
-    assert (MIS_set_gGraph G [[]]).
-    apply mkMIS_set.
-    {
-      intros.
-      simpl in H1.
-      destruct H1.
-      rewrite <-H1.
-      simpl.
-      constructor.
-      constructor.
-      unfold valid_E.
-      intros.
-      simpl in H2.
-      contradiction.
-      unfold independent_E.
-      intros.
-      simpl in H2.
-      contradiction.
-      intros.
-      assert (exists n:nat, (n < length(gV T G))%nat /\ nth n (gV T G) x0 = x0).
-      apply In_nth.
-      exact H2.
-      destruct H4.
-      destruct H4.
-      assert (x1 < 0)%nat.
-      rewrite <-H.
-      exact H4.
-      {
-        clear -H6.
-        omega.
-      }
-      contradiction.
-    }
-    constructor.
-    intro.
-    inversion H1.
-    constructor.
-    intros.
-    constructor.
-    constructor.
-    intro.
-    contradiction.
-    inversion.
-    unfold InA. 
-
-    }
-    {
-     constructor.
-    }
-    {
-       
-    simpl.
-    Basically, l = [[]] ).
-    admit.
-    unfold I. simpl. replace (0/3) with 0. rewrite Rpower_O.
-    auto. fourier. field.*)
   
   destruct (Nat.le_gt_cases (length (gV T G)) 2).
   {
@@ -1187,7 +1099,6 @@ Proof.
         apply excise_0_degree_vert with (G:=removeVerts T Tdec G [t]) (x:=x) (l:=[]).
         unfold removeVerts.
         simpl.
-        SearchAbout remove.
         apply remove_mem.
         split.
         exact H2.
@@ -1222,7 +1133,6 @@ Proof.
           unfold removeVerts.
           (* Arguments removePairs : simpl never. *)
           simpl.
-          SearchAbout filter.
           intros x3.
           intro.
           apply filter_In in H15.
@@ -1339,7 +1249,6 @@ Proof.
       {
         unfold genNeighborhood.
         unfold genNeighborhood_aux.
-        SearchAbout map.
         assert (x = (snd (t,x))).
         auto.
         rewrite H18.
@@ -1372,14 +1281,10 @@ Proof.
       
       assert (length(removeList T Tdec (remove Tdec t (gV T G))
       (genNeighborhood G t))+ length(genNeighborhood G t)=length (remove Tdec t (gV T G)))%nat.
-      SearchAbout removeList.
       apply length_removeList_all_in.
-      SearchAbout NoDup.
       apply remove_NoDup.
       apply gV_simplset.
-      SearchAbout NoDup.
       apply genNeighborhood_spec2.
-      SearchAbout genNeighborhood.
       assert (neighborhood_E T G t (genNeighborhood G t)).
       apply genNeighborhood_spec1.
       intros.
@@ -1392,8 +1297,6 @@ Proof.
     
       apply gE_irref.
       contradiction.
-
-      SearchAbout remove.
       apply remove_mem.
       split.
       apply gE_subset_l with (y:=t).
@@ -1444,153 +1347,8 @@ Proof.
       auto.
       auto.
       
-
-
-
-      
-      
-
-
-      
-      
     }    
 
-      (*  induction l1.
-        intros.
-        simpl in H20. contradiction.
-        intros.
-        induction l2.
-        { 
-          simpl in H21.
-          contradiction.
-        }
-        {
-          destruct H21.
-          { 
-            destruct H20.       
-
-          {
-          assert (a=a0).
-          rewrite H20. rewrite H21. auto.
-          rewrite H22.
-          simpl.
-          destruct Tdec. (* Two cases a0=a0; a0<>a0. *)
-          assert (length(remove Tdec a0 l2) <= length l2)%nat.
-        apply remove_length.
-        assert (length (removeList T Tdec (remove Tdec a0 l2) l1) <= length(remove Tdec a0 l2))%nat.
-        apply H19.
-        omega.
-        contradiction.
-        }
-        {
-          assert (length (removeList T Tdec l2 (a :: l1)) < length l2)%nat.
-        simpl.
-        destruct Tdec.
-        (* List.In a l2 *)
-        
-        assert (length (remove Tdec a l2) < length (l2))%nat.
-        apply remove_length_in.
-        rewrite H20.
-        exact H21.
-        assert (length (removeList T Tdec (remove Tdec a l2) l1) <=length (remove Tdec a l2))%nat.
-        apply H19.
-        omega.
-        assert (length(a0 :: remove Tdec a l2) < S(length(l2)))%nat.
-        simpl.
-        apply lt_n_S.
-        apply remove_length_in.
-        rewrite H20. auto.
-        assert (length(removeList T Tdec (a0 :: remove Tdec a l2) l1)<= length(a0::remove Tdec a l2))%nat.
-        apply H19.
-        omega.
-        simpl.
-        destruct Tdec.        
-        assert (length(remove Tdec a l2) <=length(l2))%nat.
-        apply remove_length.
-        assert (length (removeList T Tdec (remove Tdec a l2) l1)<= length(remove Tdec a l2))%nat.
-        apply H19.
-        omega.
-
-
-        inversion.
-        unfold removeList.
-
-
-        assert ((length (removeList T Tdec (remove Tdec a l2) l1) <
- length (remove Tdec a l2)))%nat.
-        apply IHl1 with (x:=x2).
- 
-        {
-        simpl in H20.
-        contradiction.
-        }
-        { 
-          destruct H21.
-          destruct H20.
-          assert (a=t0).
-          rewrite H20.
-          rewrite H21. auto.
-          rewrite H22. simpl.
-          destruct Tdec.
-          assert (lenght(removeList T Tdec (remove Tdec t0 l2) l1)) <= (length(remove Tdec t0 l2)).
-          unfold removeList.
-        simpl in H21.
-        destruct H21.
-        
-        (* induction l1.
-        {
-          
-          simpl in H20.
-          contradiction.
-          }
-        {
-          destruct H20.
-          assert (a=a0).
-          rewrite H21.
-          rewrite H20.  auto.
-          rewrite H22.
-          unfold removeList.
-          simpl.
-          simpl. *)
-        
-        assert (length(remove Tdec a l2) < length l2)%nat.
-        apply remove_length_in.
-        rewrite <-H21 in H20.
-        rewrite H20.
-        exact H21.
-        
-        assert ((length (removeList T Tdec (remove Tdec a l2) l1) <= length (remove Tdec a l2)))%nat.
-        apply H19.
-        omega.
-        apply IHl1.
-      (* Come back to this ---- DWJ *)*)
-      (* assert (INR(length x1) <= I(length(gV T (removeVerts T Tdec G (t :: (genNeighborhood G t)))))).
-        {
-          apply H.
-          unfold removeVerts.
-          simpl.
-          unfold genNeighborhood.
-          unfold genNeighborhood_aux.   
-          unfold removeList.   
-
-        eapply Nat.lt_le_trans.        
-      apply remove_length_in; auto.
-      { rewrite remove_mem.
-        split; auto.
-        intros Hcontra.
-        generalize (gE_irref _ G); intros Hz.
-        unfold neighborhood_E in H4.
-        subst.
-        specialize (H4 t).
-        destruct H4 as [A B]; apply (Hz t); apply A; left; auto. }
-      cut (length (remove Tdec t (gV T G)) < length (gV T G))%nat.
-      { intros; omega. }
-      apply remove_length_in.
-      apply gE_subset_l with (y:=x).
-      apply H4; left; auto. }
-      omega. }
-    admit. (* This is true, since t has degree 1 *)
-    } *)
     
     replace (I (length (gV T G) - 2) + I (length (gV T G) - 2)) with (2*I (length (gV T G) - 2)) by field.
     apply I_lower_bound_1.
@@ -1608,14 +1366,10 @@ Proof.
     assert (length(removeList T Tdec (remove Tdec x (gV T G))
       (genNeighborhood G x))+ length(genNeighborhood G x)=length (remove Tdec x (gV T G)))%nat.
     {   
-       SearchAbout removeList.
       apply length_removeList_all_in.
-      SearchAbout NoDup.
       apply remove_NoDup.
       apply gV_simplset.
-      SearchAbout NoDup.
       apply genNeighborhood_spec2.
-      SearchAbout genNeighborhood.
       assert (neighborhood_E T G x (genNeighborhood G x)).
       apply genNeighborhood_spec1.
       intros.
@@ -1643,7 +1397,6 @@ Proof.
     rewrite plus_INR.
     apply Rle_trans with
       (r2 := I (length (gV T G) - 1) + I (length (gV T G) - 4)).
-    (* assert (length(x1) < length(gV T G))%nat.*)
     assert (INR (length x1) <= I(length (gV T (removeVerts T Tdec G [x])))).
     apply H.
     unfold removeVerts.
@@ -1670,7 +1423,6 @@ Proof.
     {
       assert (neighborhood_E T G x (genNeighborhood G x)).
       apply genNeighborhood_spec1.
-      SearchAbout neighborhood_E.
       assert (length (genNeighborhood G x) = length x0).
       apply neighborhood_E_NoDup_length_unique with (G:=G) (x:=x).
       apply genNeighborhood_spec2.
@@ -1703,7 +1455,6 @@ Proof.
       remember (genNeighborhood G t) as l'.
       do 3 (destruct l'; simpl in H6; try omega).
       assert  (le (length[t;t0;t1]) (length (t::l0))).
-      SearchAbout NoDup length.
       apply NoDup_incl_length.
       rewrite Heql'.
       constructor. intros Hcontra.
