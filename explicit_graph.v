@@ -211,34 +211,6 @@ Proof.
   intros Hy; apply (all_in_no_dup (t::nil)); auto.
 Qed.  
 
-(* For graphs G with two vertices, then for all MISs l' of G, 
-   l' = [t1] \/ l' = [t2] \/ l' = [t1:t2]. *)
-Lemma MIS_Bounds_2_verts_aux1 : 
-  forall G (l : list (list T)) l' t1 t2,
-    MIS_set_gGraph G l -> 
-    (gV _ G) = t1::t2::nil ->
-    In l' l -> 
-    equivlistA eq l' (t1::nil) \/
-    equivlistA eq l' (t2::nil) \/
-    equivlistA eq l' (t1::t2::nil).
-Proof.
-  intros. 
-  remember (gE _ G) as E.
-  destruct E. right. right.
-  inversion H. apply H2 in H1.
-  inversion H1.
-  constructor. intros.
-Admitted.
-
-Lemma equivlistA_length A (l1 l2: list (list A)):
-  NoDupA (equivlistA eq) l1 ->
-  NoDupA (equivlistA eq) l2 ->  
-  equivlistA eq l1 l2 ->
-  length l1 = length l2.
-  intros H1 H2 H.
-induction H1.
-Admitted.
-
 Lemma MIS_Bounds_2_verts :
   forall G (l : list (list T)) t1 t2,
     MIS_set_gGraph G l -> 
@@ -246,46 +218,30 @@ Lemma MIS_Bounds_2_verts :
     length l <= 2.
 Proof.
   intros G l t1 t2 H H2.
+  inversion H. clear H.
   destruct G as [gV0 gE0
            gE_irref0 gE_symm0 gV_simplset0 gE_simplset0 gE_subset_l0
                 ]; simpl in *.
   subst gV0.
   destruct gE0.
-  { inversion H; subst.
-    assert (Hx: equivlistA eq l ((t1 :: nil) :: (t2 :: nil) :: nil)).
-    { admit. }
-    apply equivlistA_length in Hx.
+  { assert (Hx: eqlistA eq l ((t1 :: nil) :: (t2 :: nil) :: nil) \/
+                eqlistA eq l ((t2 :: nil) :: (t1 :: nil) :: nil)).
+    { admit. }      
+    destruct Hx as [Hx|Hx].
+    { 
+      apply eqlistA_length in Hx.
+      rewrite Hx; auto.
+    }
+    apply eqlistA_length in Hx.
     rewrite Hx; auto.
-    auto.
-    constructor.
-    inversion 1; subst.
-    destruct (H5 t1).
-    assert (Hy: InA eq t1 (t1 :: nil)).
-    { constructor. auto. }
-    generalize (H4 Hy). inversion 1; subst.
-    inversion gV_simplset0; subst.
-    apply H10; constructor; auto.
-    inversion H9.
-    inversion H5.
-    constructor.
-    inversion 1.
-    constructor. }
-  assert (Hx: gE0 = nil).
-  { admit. (*provable*) }
-  subst gE0.
-  destruct p as [x1 y1].
-  generalize (gE_subset_l0 x1 y1 (in_eq (x1,y1) _)).
-  intros H2.
-  assert (Hy: In y1 (t1 :: t2 :: nil)).
-  { apply (gE_subset_l0 y1 x1).
-    apply gE_symm0; left; auto. }
-  assert (H3: (x1=t1 /\ y1=t2) \/ (x1=t2 /\ y1=t1)).
-  { admit. (*by H2 Hy*) }
-  destruct H3.
-  { destruct H0; subst.
-    admit. (*only MIS is (t1 :: t2 :: nil), by H*) }
-  admit. (*by symmetric to previous case*)
-Admitted. 
+  }
+  assert (Hx: eqlistA eq l ((t1 :: t2 :: nil) :: nil) \/
+              eqlistA eq l ((t2 :: t1 :: nil) :: nil)).
+  {
+    admit.
+  }
+  destruct Hx as [Hx|Hx]; apply eqlistA_length in Hx; rewrite Hx; auto.
+Admitted.
 
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
