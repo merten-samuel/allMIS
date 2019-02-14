@@ -211,17 +211,124 @@ Proof.
   intros Hy; apply (all_in_no_dup (t::nil)); auto.
 Qed.  
 
+(*Lemma list_eq_dec : 
+  forall t1 t2 : list T, {t1 = t2} + {t1 <> t2}.
+Admitted.  *)
+
+Lemma equivlistA_length (l1 l2 : list (list T)) :
+  NoDupA (equivlistA eq) l1 ->
+  NoDupA (equivlistA eq) l2 ->   
+  equivlistA eq l1 l2 -> length l1 = length l2.
+Proof.
+  intros H1 H2 H3.
+  unfold equivlistA in H3.
+  cut ((length l1 <= length l2) /\ (length l2 <= length l1)).
+  { intros [? ?].
+    firstorder. }
+Admitted.
+(*  split.
+  { eapply NoDupA_subset_length; eauto.
+    apply list_eq_dec.
+    apply equivlist_equiv. apply eq_equivalence.
+    intros x.
+    destruct (H3 x).
+    intros X.
+    apply InAeq_InAequivlistA.
+    apply H.
+  eapply NoDupA_subset_length; eauto.
+  apply list_eq_dec.
+  apply equivlist_equiv. apply eq_equivalence.  
+  intros x.
+  destruct (H3 x). auto.
+Qed.  
+ *)
+
 Lemma MIS_Bounds_2_verts_aux1 :
   forall G (l : list (list T)) t1 t2,
     MIS_set_gGraph G l -> 
     (gV _ G) = t1::t2::nil ->
-    eqlistA eq l ((t1::t2::nil)::nil) \/
-    eqlistA eq l ((t2::t1::nil)::nil) \/
-    eqlistA eq l ((t1::nil)::(t2::nil)::nil) \/
-    eqlistA eq l ((t2::nil)::(t1::nil)::nil).
+    equivlistA eq l ((t1::t2::nil)::nil) \/
+    equivlistA eq l ((t1::nil)::(t2::nil)::nil).
 Proof.
+  intros G l t1 t2 H H1.
+  remember G as G'.
+  destruct G.
+  rewrite HeqG' in H. inversion H; subst. simpl in H1. subst gV.
+  destruct l.
+  { admit. }
+  destruct gE.
+  { destruct l0.
+    { 
+    left.
+    assert (I1: In l (l ::nil)). left; auto.
+    specialize (H0 _ I1).
+    destruct l.
+    { simpl in *. inversion H0; subst. simpl in *.
+      destruct (H4 t1 (or_introl _ eq_refl) (fun x => match x with end)) as [y [_ [X _]]].
+      inversion X. }
+    clear I1.
+    destruct l.
+    { inversion H0; subst. simpl in *.
+      destruct H1.
+      unfold valid_E in H1.
+      assert (I2: In t (t::nil)). left; auto.
+      specialize (H1 t I2). clear I2.
+      simpl in H1.
+      destruct (Tdec t1 t).
+      { subst.
+        destruct (Tdec t2 t).
+        { subst.
+          exfalso.
+          inversion gV_simplset; subst.
+          apply H8; left; auto. }
+        specialize (H4 t2 (or_intror _ (or_introl _ eq_refl))).
+        destruct H4.
+        { intros C.
+          firstorder. }
+        destruct H4 as [? [? ?]]. inversion H7. }
+      assert (X: t = t2). clear - n H1. firstorder.
+      subst t.
+      specialize (H4 t1 (or_introl _ eq_refl)).
+      destruct H4.
+      { firstorder. }
+      destruct H4 as [? [? ?]]. inversion H7. }
+    inversion H0; subst. simpl in *.
+    destruct H1.
+    unfold valid_E in H1.
+    simpl in *.
+    generalize (H1 t (or_introl _ eq_refl)); intros A.
+    generalize (H1 t0 (or_intror _ (or_introl _ eq_refl))); intros B.
+    destruct A.
+    { subst t.
+      destruct B.
+      { subst t0.
+        specialize (H4 t2 (or_intror _ (or_introl _ eq_refl))).
+        destruct H4.
+        { 
+(*    
+    assert (I2: In t (t::t0::nil)). left; auto.
+    specialize (H1 t I2). clear I2.
+      simpl in H1.
+      destruct (Tdec t1 t).
+      { subst.
+        destruct (Tdec t2 t).
+        { subst.
+          exfalso.
+          inversion gV_simplset; subst.
+          apply H8; left; auto. }
+        specialize (H4 t2 (or_intror _ (or_introl _ eq_refl))).
+        destruct H4.
+        { intros C.
+          firstorder. }
+        destruct H4 as [? [? ?]]. inversion H7. }
+      assert (X: t = t2). clear - n H1. firstorder.
+      subst t.
+      specialize (H4 t1 (or_introl _ eq_refl)).
+      destruct H4.
+      { firstorder. }
+      destruct H4 as [? [? ?]]. inversion H7. }    
+*)    
 Admitted.
-
 
 Lemma MIS_Bounds_2_verts :
   forall G (l : list (list T)) t1 t2,
@@ -230,12 +337,27 @@ Lemma MIS_Bounds_2_verts :
     length l <= 2.
 Proof.
   intros G l t1 t2 H H2.
-  destruct (MIS_Bounds_2_verts_aux1 _ _ _ _ H H2) as [A|[A|[A|A]]].
-  { apply eqlistA_length in A; rewrite A; auto. }
-  { apply eqlistA_length in A; rewrite A; auto. }
-  { apply eqlistA_length in A; rewrite A; auto. }
-  apply eqlistA_length in A; rewrite A; auto.
-Qed.  
+  destruct (MIS_Bounds_2_verts_aux1 _ _ _ _ H H2) as [A|A].
+  { apply equivlistA_length in A; auto.
+    rewrite A; auto.
+    inversion H; auto.
+    inversion H; auto.
+    constructor; auto.
+    inversion 1. }
+  apply equivlistA_length in A; auto.
+  rewrite A; auto.
+  inversion H; auto.
+  inversion H; auto.
+  assert (X: t1 <> t2). admit.
+  constructor.
+  { inversion 1; subst.
+    { destruct (H6 t1). cut (InA eq t1 (t2::nil)).
+      { inversion 1; subst. apply X; auto.
+        inversion H10. }
+      apply H5; constructor; auto. }
+    inversion H6. }
+  constructor; auto. inversion 1. 
+Admitted.
 
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
