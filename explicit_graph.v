@@ -549,6 +549,49 @@ Definition list_excised_MIS_step G x : list (list T) :=
 Definition list_excised_MIS G x :=
   map (fun k => list_excised_MIS_step G k) (x::genNeighborhood G x).
 
+Lemma list_excised_MIS_gen_spec :
+  forall G l k,
+    (forall x, In x l -> In x (gV _ G)) ->
+    (forall x neigh, In x l -> NoDup neigh -> neighborhood_E T G x neigh ->
+      length (x::neigh) >= k) ->
+    (forall L, In L (map (fun k => list_excised_MIS_step G k) l) ->
+      exists G', (length (gV _ G') < length (gV _ G) /\
+                 MIS_set_gGraph G' L) /\
+                 length (gV _ G') + k<= length (gV _ G)).
+Proof.
+  intros.
+  induction l. simpl in H1. inversion H1.
+  simpl in H1.
+  destruct H1. unfold list_excised_MIS_step in H1.
+  exists (removeVerts T Tdec G (a :: genNeighborhood G a)).
+  split. split. 
+  simpl. 
+  eapply le_lt_trans.
+  apply removeList_length_le.
+  apply remove_length_lt.
+  apply H. left. auto. simpl.
+  rewrite <- H1. apply AllMIS_spec.
+  replace (gV T (removeVerts T Tdec G (a :: genNeighborhood G a)))
+    with (removeList T Tdec(gV T G) (a :: genNeighborhood G a)) by auto.
+  erewrite <- length_removeList_all_in with (l := gV T G).
+  apply plus_le_compat_l.
+  apply H0. left. auto. auto.
+  apply genNeighborhood_spec2.
+  apply genNeighborhood_spec1.
+  apply gV_simplset.
+  constructor. intros Hcontra.
+  apply genNeighborhood_spec1 in Hcontra.
+  apply gE_irref in Hcontra. auto.
+  apply genNeighborhood_spec2.
+  intros. destruct H2. subst. auto.
+  apply H. left. auto. apply genNeighborhood_spec1 in H2.
+  eapply gE_subset_l. eauto.
+  apply IHl. intros. apply H. right. auto.
+  intros. apply H0. right. auto. auto. auto.
+  auto.
+Qed.
+
+
 (*
 Fixpoint list_excised_MIS_aux G l :=
   match l with 
@@ -832,6 +875,47 @@ Require Import Reals.
 Require Import Omega.
 Require Import Fourier.
 Open Scope R_scope.
+
+Definition BigSum_R {X : Type} l (f : X -> R) :=
+  fold_right Rplus 0 (map f l).
+
+Lemma BigSum_R_step {X : Type} :
+  forall (x : X) l f, 
+    BigSum_R (x::l) f = f x + BigSum_R l f.
+Proof. auto. Qed.
+
+Lemma BigSum_nat_as_BigSumR :
+  forall {X : Type} l (f : X -> nat),
+    INR (BigSum_nat l f) = BigSum_R l (fun x => (INR (f x))).
+Proof.
+  intros. induction l. auto.
+  rewrite BigSum_step. rewrite BigSum_R_step.
+  rewrite <- IHl. apply plus_INR. 
+Qed.
+Check big_sum_func_ge.
+
+Lemma big_sumR_func_ge {X : Type}:
+  forall (l : list X) f1 f2,
+    (forall x, List.In x l -> f1 x <= f2 x) ->
+    BigSum_R l f1 <= BigSum_R l f2.
+Proof.
+  intros l. induction l.
+  intros. compute. right. auto.
+  intros. do 2 rewrite BigSum_R_step.
+  assert (List.In a (a::l)) by (left; auto).
+  apply Rplus_le_compat. apply H. left. auto.
+  apply IHl. intros. apply H. right. auto.
+Qed.
+
+Lemma big_sumR_constant_length {X : Type} :
+  forall (l : list X) x,
+    BigSum_R l (fun _ => x) = (INR (length l)) * x.
+Proof.
+  intros. induction l.
+  compute. ring. rewrite BigSum_R_step.
+  simpl length. rewrite  IHl. rewrite S_INR.
+  ring.
+Qed.
 
 Import ListNotations.
 
@@ -1347,8 +1431,78 @@ Proof.
     (* Nate's inequalities *)
     admit.
   }
-  (* This needs the finished proof from Wood's paper (where all vertices 
-     of degree 2) *)
-  admit.
+  {
+  {
+    case_eq (gV T G); intros. rewrite H4 in H0. simpl in H0.
+    omega. assert (List.In t (gV T G)). rewrite H4. left.
+    auto.
+    assert (exists k, (length (t::l0) = plus k 3)).
+    {
+      assert (length (genNeighborhood G t) = 2%nat).
+      apply (H2 t). auto.
+      apply genNeighborhood_spec1.
+      apply genNeighborhood_spec2.
+      remember (genNeighborhood G t) as l'.
+      do 3 (destruct l'; simpl in H6; try omega).
+      assert  (le (length[t;t0;t1]) (length (t::l0))).
+      SearchAbout NoDup length.
+      apply NoDup_incl_length.
+      rewrite Heql'.
+      constructor. intros Hcontra.
+      apply genNeighborhood_spec1 in Hcontra.
+      apply gE_irref in Hcontra. auto.
+      apply genNeighborhood_spec2.
+      intros t' H7. rewrite Heql' in H7.
+      destruct H7. subst. left. auto.
+      apply genNeighborhood_spec1 in H7.
+      apply gE_subset_l in H7. rewrite <- H4.
+      auto. simpl.
+      do 2 (destruct l0; simpl in H7; try omega).
+      simpl.
+      exists (length l0). omega.
+    }
+    destruct H6.
+    eapply Rle_trans. apply le_INR.
+    apply WoodIneq_aux. apply H5. auto.
+    rewrite H6. rewrite <- I_unfold.
+    eapply Rle_trans.
+    rewrite BigSum_nat_as_BigSumR.
+    apply big_sumR_func_ge.
+    2:{
+      rewrite big_sumR_constant_length.
+      replace (length (list_excised_MIS G t)) with 3%nat.
+      rewrite Rmult_comm.
+      replace (INR 3) with 3.
+      apply Rmult_le_compat_r. fourier.
+      apply Rle_refl. compute. ring.
+      unfold list_excised_MIS.
+      rewrite map_length. simpl. rewrite (H2 t).
+      auto. auto. apply genNeighborhood_spec1.
+      apply genNeighborhood_spec2.
+    }
+    intros. unfold list_excised_MIS in H7.
+    apply list_excised_MIS_gen_spec with (k:=3%nat) in H7.
+    do 3 destruct H7.
+    eapply Rle_trans.
+    apply H. 2:{ apply H9. }
+    omega. apply I_monontonic2.
+    etransitivity.
+    eapply plus_le_reg_l.
+    rewrite plus_comm.
+    etransitivity. apply H8.
+    rewrite H4. rewrite plus_comm.
+    apply Nat.eq_le_incl. exact H6.
+    omega. intros.
+    destruct H8. subst. auto.
+    apply genNeighborhood_spec1 in H8.
+    eapply gE_subset_l. eauto.
+    intros. simpl. rewrite (H2 x1).
+    auto. destruct H8. subst. auto.
+    apply genNeighborhood_spec1 in H8.
+    eapply gE_subset_l. eauto. eauto.
+    auto.
+  }
+
+}
 Admitted.
 End GraphInequalities.
