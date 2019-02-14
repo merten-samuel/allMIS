@@ -1295,15 +1295,177 @@ Proof.
       }
       }
       
-      admit.
-      (* Come back to this ---- DWJ *)
-      (* {assert (INR(length x1) <= I(length(gV T (removeVerts T Tdec G (t :: (genNeighborhood G t)))))).
+      assert (List.In x (genNeighborhood G t)). 
+      {
+        unfold genNeighborhood.
+        unfold genNeighborhood_aux.
+        SearchAbout map.
+        assert (x = (snd (t,x))).
+        auto.
+        rewrite H18.
+        apply in_map.
+        apply filter_In.
+        split.
+        exact H10.
+        unfold isFstElemOfPair.
+        simpl.
+        simpl.
+        destruct Tdec.
+        auto.
+        contradiction.
+      }
+       
+      assert (forall l1 l2, length((removeList T Tdec l2 l1)) <= length l2)%nat.     
+      {
+        induction l1.
+        intros.
+        simpl.
+        omega.
+        intros.
+        simpl.
+        assert (length (removeList T Tdec (remove Tdec a l2) l1) <= length (remove Tdec a l2))%nat.
+        apply IHl1.
+        assert (length (remove Tdec a l2)<= length l2)%nat.
+        apply remove_length.
+        omega.
+      }
+      (* Stuck here!!!! ****)
+      (* Going home ****)
+
+      assert (forall l1 l2 x, length(removeList T Tdec l2 (x::l1)) <= length(removeList T Tdec l2 l1))%nat.
+      {
+        induction l1.
+        simpl.
+        intros.      
+        apply remove_length.
+        simpl.
+        admit.
+      }
+
+      assert (forall l1 ,(forall l2 x, List.In x l1 -> List.In x l2 -> length(removeList T Tdec l2 l1) < length l2)%nat). 
+      {
+        admit.
+      }
+    admit.
+    }    
+
+      (*  induction l1.
+        intros.
+        simpl in H20. contradiction.
+        intros.
+        induction l2.
+        { 
+          simpl in H21.
+          contradiction.
+        }
+        {
+          destruct H21.
+          { 
+            destruct H20.       
+
+          {
+          assert (a=a0).
+          rewrite H20. rewrite H21. auto.
+          rewrite H22.
+          simpl.
+          destruct Tdec. (* Two cases a0=a0; a0<>a0. *)
+          assert (length(remove Tdec a0 l2) <= length l2)%nat.
+        apply remove_length.
+        assert (length (removeList T Tdec (remove Tdec a0 l2) l1) <= length(remove Tdec a0 l2))%nat.
+        apply H19.
+        omega.
+        contradiction.
+        }
+        {
+          assert (length (removeList T Tdec l2 (a :: l1)) < length l2)%nat.
+        simpl.
+        destruct Tdec.
+        (* List.In a l2 *)
+        
+        assert (length (remove Tdec a l2) < length (l2))%nat.
+        apply remove_length_in.
+        rewrite H20.
+        exact H21.
+        assert (length (removeList T Tdec (remove Tdec a l2) l1) <=length (remove Tdec a l2))%nat.
+        apply H19.
+        omega.
+        assert (length(a0 :: remove Tdec a l2) < S(length(l2)))%nat.
+        simpl.
+        apply lt_n_S.
+        apply remove_length_in.
+        rewrite H20. auto.
+        assert (length(removeList T Tdec (a0 :: remove Tdec a l2) l1)<= length(a0::remove Tdec a l2))%nat.
+        apply H19.
+        omega.
+        simpl.
+        destruct Tdec.        
+        assert (length(remove Tdec a l2) <=length(l2))%nat.
+        apply remove_length.
+        assert (length (removeList T Tdec (remove Tdec a l2) l1)<= length(remove Tdec a l2))%nat.
+        apply H19.
+        omega.
+
+
+        inversion.
+        unfold removeList.
+
+
+        assert ((length (removeList T Tdec (remove Tdec a l2) l1) <
+ length (remove Tdec a l2)))%nat.
+        apply IHl1 with (x:=x2).
+ 
+        {
+        simpl in H20.
+        contradiction.
+        }
+        { 
+          destruct H21.
+          destruct H20.
+          assert (a=t0).
+          rewrite H20.
+          rewrite H21. auto.
+          rewrite H22. simpl.
+          destruct Tdec.
+          assert (lenght(removeList T Tdec (remove Tdec t0 l2) l1)) <= (length(remove Tdec t0 l2)).
+          unfold removeList.
+        simpl in H21.
+        destruct H21.
+        
+        (* induction l1.
+        {
+          
+          simpl in H20.
+          contradiction.
+          }
+        {
+          destruct H20.
+          assert (a=a0).
+          rewrite H21.
+          rewrite H20.  auto.
+          rewrite H22.
+          unfold removeList.
+          simpl.
+          simpl. *)
+        
+        assert (length(remove Tdec a l2) < length l2)%nat.
+        apply remove_length_in.
+        rewrite <-H21 in H20.
+        rewrite H20.
+        exact H21.
+        
+        assert ((length (removeList T Tdec (remove Tdec a l2) l1) <= length (remove Tdec a l2)))%nat.
+        apply H19.
+        omega.
+        apply IHl1.
+      (* Come back to this ---- DWJ *)*)
+      (* assert (INR(length x1) <= I(length(gV T (removeVerts T Tdec G (t :: (genNeighborhood G t)))))).
         {
           apply H.
           unfold removeVerts.
           simpl.
           unfold genNeighborhood.
-          unfold genNeighborhood_aux.      
+          unfold genNeighborhood_aux.   
+          unfold removeList.   
 
         eapply Nat.lt_le_trans.        
       apply remove_length_in; auto.
@@ -1323,7 +1485,7 @@ Proof.
       omega. }
     admit. (* This is true, since t has degree 1 *)
     } *)
-    }
+    
     replace (I (length (gV T G) - 2) + I (length (gV T G) - 2)) with (2*I (length (gV T G) - 2)) by field.
     apply I_lower_bound_1.
     omega.
