@@ -211,123 +211,6 @@ Proof.
   intros Hy; apply (all_in_no_dup (t::nil)); auto.
 Qed.  
 
-Lemma equivlistA_length (l1 l2 : list (list T)) :
-  NoDupA (equivlistA eq) l1 ->
-  NoDupA (equivlistA eq) l2 ->   
-  equivlistA eq l1 l2 -> length l1 = length l2.
-Proof.
-  intros H1 H2 H3.
-  unfold equivlistA in H3.
-  cut ((length l1 <= length l2) /\ (length l2 <= length l1)).
-  { intros [? ?].
-    firstorder. }
-Admitted.
-
-Lemma MIS_Bounds_2_verts_aux1 :
-  forall G (l : list (list T)) t1 t2,
-    MIS_set_gGraph G l -> 
-    (gV _ G) = t1::t2::nil ->
-    equivlistA eq l ((t1::t2::nil)::nil) \/
-    equivlistA eq l ((t1::nil)::(t2::nil)::nil).
-Proof.
-  intros G l t1 t2 H H1.
-  remember G as G'.
-  destruct G.
-  rewrite HeqG' in H. inversion H; subst. simpl in H1. subst gV.
-  destruct l.
-  { admit. }
-  destruct gE.
-  { destruct l0.
-    { 
-    left.
-    assert (I1: In l (l ::nil)). left; auto.
-    specialize (H0 _ I1).
-    destruct l.
-    { simpl in *. inversion H0; subst. simpl in *.
-      destruct (H4 t1 (or_introl _ eq_refl) (fun x => match x with end)) as [y [_ [X _]]].
-      inversion X. }
-    clear I1.
-    destruct l.
-    { inversion H0; subst. simpl in *.
-      destruct H1.
-      unfold valid_E in H1.
-      assert (I2: In t (t::nil)). left; auto.
-      specialize (H1 t I2). clear I2.
-      simpl in H1.
-      destruct (Tdec t1 t).
-      { subst.
-        destruct (Tdec t2 t).
-        { subst.
-          exfalso.
-          inversion gV_simplset; subst.
-          apply H8; left; auto. }
-        specialize (H4 t2 (or_intror _ (or_introl _ eq_refl))).
-        destruct H4.
-        { intros C.
-          firstorder. }
-        destruct H4 as [? [? ?]]. inversion H7. }
-      assert (X: t = t2). clear - n H1. firstorder.
-      subst t.
-      specialize (H4 t1 (or_introl _ eq_refl)).
-      destruct H4.
-      { firstorder. }
-      destruct H4 as [? [? ?]]. inversion H7. }
-    inversion H0; subst. simpl in *.
-    destruct H1.
-    unfold valid_E in H1.
-    simpl in *.
-    generalize (H1 t (or_introl _ eq_refl)); intros A.
-    generalize (H1 t0 (or_intror _ (or_introl _ eq_refl))); intros B.
-    destruct A.
-    { subst t.
-      destruct B.
-      { subst t0.
-        specialize (H4 t2 (or_intror _ (or_introl _ eq_refl))).
-        destruct H4.
-        { admit. }
-        admit. }
-      admit. }
-    admit. }
-    admit. }
-  admit.
-Admitted.
-
-Lemma MIS_Bounds_2_verts :
-  forall G (l : list (list T)) t1 t2,
-    MIS_set_gGraph G l -> 
-    (gV _ G) = t1::t2::nil ->
-    length l <= 2.
-Proof.
-  intros G l t1 t2 H H2.
-  destruct (MIS_Bounds_2_verts_aux1 _ _ _ _ H H2) as [A|A].
-  { apply equivlistA_length in A; auto.
-    rewrite A; auto.
-    inversion H; auto.
-    inversion H; auto.
-    constructor; auto.
-    inversion 1. }
-  apply equivlistA_length in A; auto.
-  rewrite A; auto.
-  inversion H; auto.
-  inversion H; auto.
-  assert (X: t1 <> t2).
-  { destruct G.
-    simpl in H2.
-    clear - H2 gV_simplset.
-    rewrite H2 in gV_simplset.
-    intros X.
-    subst t1.
-    inversion gV_simplset; subst.
-    apply H1; left; auto. }
-  constructor.
-  { inversion 1; subst.
-    { destruct (H6 t1). cut (InA eq t1 (t2::nil)).
-      { inversion 1; subst. apply X; auto.
-        inversion H10. }
-      apply H5; constructor; auto. }
-    inversion H6. }
-  constructor; auto. inversion 1. 
-Qed.
 
 Definition isFstElemOfPair (x : T) (p : T*T) :=
   if Tdec x (fst p) then true else false.
@@ -901,6 +784,61 @@ Proof.
   }
 Qed.
 Print Assumptions WoodIneq_aux.
+
+Lemma MIS_Bounds_2_verts :
+  forall G (l : list (list T)) t1 t2,
+    MIS_set_gGraph G l -> 
+    (gV _ G) = t1::t2::List.nil ->
+    length l <= 2.
+Proof.
+  intros G l t1 t2 H H2.
+  eapply Nat.le_trans.
+  apply (WoodIneq_aux l G t1); auto.
+  { rewrite H2; left; auto. }
+  unfold list_excised_MIS.
+  unfold list_excised_MIS_step.
+  simpl.
+  unfold BigSum_nat.
+  simpl.
+  assert (X: genNeighborhood G t1 = nil \/
+             genNeighborhood G t1 = t2::nil).
+  {  admit. }
+  destruct X as [X|X].
+  { rewrite X.
+    simpl.
+    rewrite <-plus_n_O.
+    generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t1::nil))); intro Y.
+    apply (MIS_bounds_1_verts _ _ t2) in Y; eauto.
+    { rewrite Y; omega. }
+    simpl; rewrite H2; simpl.
+    destruct (Tdec t1 t1); try congruence. clear e.
+    destruct (Tdec t1 t2); auto.
+    subst t1. generalize (gV_simplset _ G). rewrite H2. inversion 1.
+    subst. exfalso; apply H4; left; auto. }
+  rewrite X; simpl.
+  assert (length (AllMIS T Tdec (removeVerts T Tdec G (t1 :: t2 :: nil))) = 1) as ->.
+  { generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t1 :: t2 :: nil))). intro Y.
+    apply MIS_Bounds_0_verts in Y; auto.
+    simpl; rewrite H2; simpl.
+    destruct (Tdec t1 t1); try congruence. clear e.
+    destruct (Tdec t1 t2); auto.
+    simpl. destruct (Tdec t2 t2); try congruence. clear e. auto. }
+  rewrite <-plus_n_O.
+  assert (length (AllMIS T Tdec (removeVerts T Tdec G (t2 :: genNeighborhood G t2))) = 1) as ->.
+  { generalize (AllMIS_spec _ Tdec (removeVerts T Tdec G (t2 :: t1 :: nil))). intro Y.
+    apply MIS_Bounds_0_verts in Y; auto.
+    { assert (genNeighborhood G t2 = t1 :: nil) as ->.
+      { admit. }
+      auto. }
+    simpl; rewrite H2; simpl.
+    destruct (Tdec t1 t1); try congruence. clear e.
+    destruct (Tdec t2 t1); auto.
+    { destruct (Tdec t2 t2); try congruence. auto. }
+    simpl.
+    destruct (Tdec t1 t1); try congruence. clear e.
+    destruct (Tdec t2 t2); try congruence. auto. }
+  omega.
+Admitted. 
 
 Require Import Reals.
 Require Import Omega.
