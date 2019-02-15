@@ -378,10 +378,8 @@ Proof.
   constructor; try split; intros; auto.
 Qed.
 
-
-Lemma AllMIS_exists_lGraph : forall
-    (G : lGraph),
-    MIS_set_lGraph G ((PrintMIS G)).
+Lemma PrintMIS_correct : forall G: lGraph,
+  MIS_set_lGraph G (PrintMIS G).
 Proof.
   intros.
   constructor.
@@ -421,9 +419,9 @@ Qed.
 
 Require Import Reals.
 Require Import moon_lemma.
-Theorem MIS_bounds_lGraph : forall G l,
-    MIS_set_lGraph G l -> 
-    INR (length l) <= I (lV G).
+
+Lemma MIS_bound : forall G l,
+    MIS_set_lGraph G l -> INR (length l) <= I (lV G).
 Proof.
   intros.
   apply All_MIS_preserved_lGraph_to_GenGraph in H.
@@ -445,3 +443,12 @@ Proof.
   }
   rewrite <- H1; auto.
 Qed.
+
+Theorem PrintMIS_correct_and_small : forall G: lGraph,
+    MIS_set_lGraph G (PrintMIS G) /\
+    INR (length (PrintMIS G)) <= I (lV G).
+Proof.
+  intros G; split.
+  { apply PrintMIS_correct. }
+  apply MIS_bound. apply PrintMIS_correct.
+Qed.  
