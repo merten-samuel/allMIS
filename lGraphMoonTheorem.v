@@ -421,8 +421,7 @@ Qed.
 
 Require Import Reals.
 Require Import moon_lemma.
-Theorem MIS_bounds_lGraph : forall G l
-    (mkG_MIS :  (GenGraph nat) -> list (list nat)), (*FIXME: This assumption needs to be instantiated.*)    
+Theorem MIS_bounds_lGraph : forall G l,
     MIS_set_lGraph G l -> 
     INR (length l) <= I (lV G).
 Proof.
