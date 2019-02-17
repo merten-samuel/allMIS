@@ -20,7 +20,7 @@ digraph deps {
   all_MIS_refine -> all_MIS_complete;
   all_MIS_refine -> all_MIS_unique;
 
-  moon_lemma -> basics;
+  moon_lemmas -> basics;
 
   //moon -> basics;
   moon -> all_MIS_unique;
@@ -28,6 +28,8 @@ digraph deps {
 
   //toplevel -> basics;
   //toplevel -> all_MIS;
-  //toplevel -> all_MIS_sound;  
+  //toplevel -> all_MIS_sound;
+  toplevel -> all_MIS_complete;
+  toplevel -> all_MIS_refine;
   toplevel -> moon;  
 }

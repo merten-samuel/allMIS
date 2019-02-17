@@ -7,6 +7,7 @@ Require Import Omega.
 Require Import all_MIS.
 Require Import all_MIS_complete.
 Require Import all_MIS_unique.
+Require Import all_MIS_refine.
 Import MIS_basics.
 
 Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
@@ -449,5 +450,16 @@ Proof.
   intros G; split.
   { apply AllMIS_correct. }
   apply MIS_bound. apply AllMIS_correct.
+Qed.  
+
+Theorem StackMIS_small : forall G: lGraph,
+    lV G <> 0%nat ->
+    INR (length (snd (stackMIS G (startState G)))) <= I (lV G).
+Proof.
+  intros G Hx.
+  rewrite <-(@Permutation.Permutation_length _ (AllMIS G)).
+  apply MIS_bound; apply AllMIS_correct.
+  apply Permutation.Permutation_sym.
+  apply stackMIS_perm_AllMIS; auto.
 Qed.  
 
