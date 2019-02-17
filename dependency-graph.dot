@@ -1,0 +1,33 @@
+//Transitive dependencies among main files in development
+digraph deps {
+  basics -> graph_basics;
+  basics -> MIS_basics;
+  basics -> lex_order;  
+
+  all_MIS_complete -> basics;
+  all_MIS_complete -> all_MIS;
+  
+  all_MIS_sound -> basics;
+  all_MIS_sound -> all_MIS;
+  
+  all_MIS_unique -> basics;
+  //all_MIS_unique -> all_MIS;
+  all_MIS_unique -> all_MIS_sound;
+  
+  //all_MIS_refine -> basics;
+  all_MIS_refine -> wf_combinators;
+  all_MIS_refine -> all_MIS_sound;
+  all_MIS_refine -> all_MIS_complete;
+  all_MIS_refine -> all_MIS_unique;
+
+  moon_lemma -> basics;
+
+  //moon -> basics;
+  moon -> all_MIS_unique;
+  moon -> moon_lemma;
+
+  //toplevel -> basics;
+  //toplevel -> all_MIS;
+  //toplevel -> all_MIS_sound;  
+  toplevel -> moon;  
+}
