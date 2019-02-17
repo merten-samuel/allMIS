@@ -1769,7 +1769,7 @@ Qed.
   omega.
 *)
 
-Theorem I_monontonic:  forall m :nat, forall n:nat, ((n<m)%nat -> I n < I m).
+Theorem I_increasing:  forall m :nat, forall n:nat, ((n<m)%nat -> I n < I m).
 Proof.
 induction m.
 {
@@ -1807,7 +1807,7 @@ induction m.
     }
   }
 Qed.
-Theorem I_monontonic2:  forall m :nat, forall n:nat, ((n<=m)%nat -> I n <= I m).
+Theorem I_monotonic:  forall m :nat, forall n:nat, ((n<=m)%nat -> I n <= I m).
 Proof.
 intros.
 destruct H.
@@ -1818,7 +1818,7 @@ destruct H.
   assert (n<S m)%nat.
   omega.
   left.
-  apply I_monontonic.
+  apply I_increasing.
   exact H0.
 }
 Qed.

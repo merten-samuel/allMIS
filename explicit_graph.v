@@ -1091,7 +1091,7 @@ Proof.
       apply remove_length.
     }
 (*** DWJ to here. *)
-    apply I_monontonic2.  
+    apply I_monotonic.  
     apply H8.
   }
     destruct H2.
@@ -1279,7 +1279,7 @@ Proof.
           omega.
         }
          
-      apply I_monontonic2.
+      apply I_monotonic.
       exact Hw.
       }
       }
@@ -1376,7 +1376,7 @@ Proof.
            (gV T
               (removeVerts T Tdec G
                  (t :: genNeighborhood G t)))) <= I(length (gV T G) - 2)).
-      apply I_monontonic2.
+      apply I_monotonic.
       auto.
       apply Rle_trans with (r2:=I
         (length
@@ -1455,7 +1455,7 @@ Proof.
            (gV T
               (removeVerts T Tdec G
                  (x :: genNeighborhood G x))))<=I(length(gV T G) -4)).
-    apply I_monontonic2.
+    apply I_monotonic.
     unfold removeVerts.
     simpl.
     assert (3<=length (genNeighborhood G x))%nat.
@@ -1472,7 +1472,7 @@ Proof.
     }
     omega.
     assert (I (length (gV T (removeVerts T Tdec G [x]))) <= I(length(gV T G)-1)).
-    apply I_monontonic2.
+    apply I_monotonic.
     unfold removeVerts.
     simpl.
     omega.
@@ -1533,7 +1533,7 @@ Proof.
     do 3 destruct H7.
     eapply Rle_trans.
     apply H. 2:{ apply H9. }
-    omega. apply I_monontonic2.
+    omega. apply I_monotonic.
     etransitivity.
     eapply plus_le_reg_l.
     rewrite plus_comm.
