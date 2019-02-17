@@ -91,8 +91,8 @@ Proof.
   }
 Qed.
 
-Theorem PrintMIS_correct :
-  forall G l, In l (PrintMIS G) -> MaximalIndSet_lGraph G l.
+Theorem AllMIS_correct :
+  forall G l, In l (AllMIS G) -> MaximalIndSet_lGraph G l.
 Proof.
   intros G. induction G using InducedGraph_ind; intros.
   {
@@ -101,14 +101,14 @@ Proof.
     reflexivity. inversion H.
   }
   {
-    unfold PrintMIS in H.
-    apply mkCandidateSets_correct_ind with (l := PrintMIS (LiftGraph x G)).
+    unfold AllMIS in H.
+    apply mkCandidateSets_correct_ind with (l := AllMIS (LiftGraph x G)).
     assumption. simpl in H. 
-    simpl mkSetsPrintMIS in H. simpl in H.
+    simpl mkSetsAllMIS in H. simpl in H.
     rewrite -> LiftGraph_red in H.
     assumption. omega.
   }
 Qed.
 
 
-Print Assumptions PrintMIS_correct.
+Print Assumptions AllMIS_correct.

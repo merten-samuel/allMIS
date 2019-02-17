@@ -1482,12 +1482,12 @@ Section noDepRefine.
   Qed.
 
   Lemma print_mis_one_lGraph :
-    PrintMIS one_lGraph = (0::nil)::nil.
+    AllMIS one_lGraph = (0::nil)::nil.
   Proof. auto. Qed.
 
-  Lemma queueMIS_EQ_PrintMIS :
+  Lemma queueMIS_EQ_AllMIS :
     forall n G, (lV G = n) -> lV G <> 0 -> 
-      exists s', queueBigStep G (startState G) s' /\ matchQandCand G (lV G)  s' (PrintMIS G).
+      exists s', queueBigStep G (startState G) s' /\ matchQandCand G (lV G)  s' (AllMIS G).
   Proof.
     intros n.
     induction n.
@@ -1534,10 +1534,10 @@ Section noDepRefine.
         destruct H7 as [s''' H7].
         generalize (@stepQ_as_mkCandSets G (length (fst s''))
                       s'' s''' H7 (lV (LiftGraph n G))
-                    (PrintMIS (LiftGraph n G))); intros.
+                    (AllMIS (LiftGraph n G))); intros.
         assert  (matchQandCand G (S (lV (LiftGraph n G))) s'''
                   (mkCandidateSets (LiftGraph (S (lV (LiftGraph n G))) G)
-                  (PrintMIS (LiftGraph n G)))).
+                  (AllMIS (LiftGraph n G)))).
         apply H8.
         { inversion H5; subst. rewrite <- H9.
           unfold container, AasB; simpl. rewrite map_length.
@@ -1579,21 +1579,21 @@ Section noDepRefine.
         * eapply rt_trans. apply H6.
           apply queueBigStep_n in H7. auto.
         * replace (lV G) with (S (lV (LiftGraph n G))).
-          replace (PrintMIS G) with
+          replace (AllMIS G) with
             (mkCandidateSets (LiftGraph (S (lV (LiftGraph n G))) G)
-              (PrintMIS (LiftGraph n G))).
+              (AllMIS (LiftGraph n G))).
           auto. simpl.
-          unfold PrintMIS, mkSetsPrintMIS.
+          unfold AllMIS, mkSetsAllMIS.
           replace (lV G) with (S (lV (LiftGraph n G))). simpl.
           replace (LiftGraph (S n) G) with G; auto.
           rewrite <- H. rewrite fix_LiftGraph. auto.
   Qed.
 
-  Lemma queueMIS_step_perm_PrintMIS :
+  Lemma queueMIS_step_perm_AllMIS :
     forall n G, (lV G = n) -> lV G <> 0 -> 
-      exists s', queueBigStep G (startState G) s' /\  (fst s' = nil) /\ Permutation (snd s') (PrintMIS G).
+      exists s', queueBigStep G (startState G) s' /\  (fst s' = nil) /\ Permutation (snd s') (AllMIS G).
   Proof.
-    intros. generalize (@queueMIS_EQ_PrintMIS n G H H0); intros.
+    intros. generalize (@queueMIS_EQ_AllMIS n G H H0); intros.
     destruct H1 as [s_int [H1 H2]].
     generalize (queueStep_n_exists G s_int); intros.
     destruct H3 as [s' H3].
@@ -1612,13 +1612,13 @@ Section noDepRefine.
       rewrite H8. rewrite app_nil_r. apply Permutation_refl.
   Qed.
 
-  Lemma queueMIS_perm_PrintMIS : 
+  Lemma queueMIS_perm_AllMIS : 
     forall G,
       (lV G <> 0) -> fst (queueMIS G (startState G)) = nil /\
-                     Permutation (snd (queueMIS G (startState G))) (PrintMIS G).
+                     Permutation (snd (queueMIS G (startState G))) (AllMIS G).
   Proof.
     intros. assert (lV G = lV G) by auto.
-    generalize (@queueMIS_step_perm_PrintMIS (lV G) G H0 H); intros.
+    generalize (@queueMIS_step_perm_AllMIS (lV G) G H0 H); intros.
     destruct H1 as [s' [H1 [H2 H3]]].
     assert (queueMIS G (startState G) = queueMIS G s').
     apply stepBigEq. auto.
@@ -1629,12 +1629,12 @@ Section noDepRefine.
     split; auto.
   Qed.
 
-  Lemma stackMIS_perm_PrintMIS :
+  Lemma stackMIS_perm_AllMIS :
     forall G,
-      (lV G <> 0) -> Permutation (snd (stackMIS G (startState G))) (PrintMIS G).
+      (lV G <> 0) -> Permutation (snd (stackMIS G (startState G))) (AllMIS G).
   Proof.
     intros.
-    apply queueMIS_perm_PrintMIS in H.
+    apply queueMIS_perm_AllMIS in H.
     destruct H as [H H0].
     eapply Permutation_trans; [|eauto].
     unfold startState.
@@ -1663,8 +1663,8 @@ Section noDepRefine.
       exists l', lex_order.list_eq l' l /\ In l' (snd (stackMIS G (startState G))).
   Proof.
     intros.
-    generalize (stackMIS_perm_PrintMIS _ H).
-    generalize (PrintMIS_complete _ _ H0).
+    generalize (stackMIS_perm_AllMIS _ H).
+    generalize (AllMIS_complete _ _ H0).
     intros. destruct H1 as [l' [H1 H3]]. exists l'.
     split; auto.
     eapply Permutation_in;[|eauto].
@@ -1675,8 +1675,8 @@ Section noDepRefine.
     forall G l, (lV G <> 0) -> In l (snd (stackMIS G (startState G))) -> MaximalIndSet_lGraph G l.
   Proof.
     intros.
-    generalize (stackMIS_perm_PrintMIS _ H).
-    generalize (PrintMIS_correct G l). intros.
+    generalize (stackMIS_perm_AllMIS _ H).
+    generalize (AllMIS_correct G l). intros.
     apply H1.
     eapply Permutation_in;[|eauto].
     auto.
@@ -1722,8 +1722,8 @@ Section noDepRefine.
     forall G, (lV G <> 0) -> NoDuplicates' (snd (stackMIS G (startState G))).
   Proof.
     intros.
-    generalize (stackMIS_perm_PrintMIS _ H).
-    generalize (PrintMIS_unique G). intros.
+    generalize (stackMIS_perm_AllMIS _ H).
+    generalize (AllMIS_unique G). intros.
     eapply Perm_preserves_NoDuplicates'.
     apply Permutation_sym. eauto. auto.
   Qed.

@@ -9,8 +9,8 @@ Require Import MIS_basics.
 Require Import all_MIS.
 Require Import all_MIS_sound.
 
-Theorem PrintMIS_complete :
-  forall G l, MaximalIndSet_lGraph G l -> exists l', list_eq l' l /\ In l' (PrintMIS G).
+Theorem AllMIS_complete :
+  forall G l, MaximalIndSet_lGraph G l -> exists l', list_eq l' l /\ In l' (AllMIS G).
 Proof.
     intros G.  induction G using InducedGraph_ind; intros.
   {
@@ -47,7 +47,7 @@ Proof.
        destruct e as [l' [H4 H5]]. exists (x::l').
        split. apply (list_eq_trans _ (x :: rmv x l) _).
        apply list_eq_cons. assumption. apply list_eq_symmetric in H1.
-       assumption. unfold PrintMIS. simpl.
+       assumption. unfold AllMIS. simpl.
        apply l5_spec_mkCandidateSets. assumption.
        destruct H as [[H H'] H'']. simpl in H'.
        unfold Independent. intros x0 y0 H6 H7.
@@ -177,8 +177,8 @@ Proof.
         apply rmv_neighbors_spec in h; apply rmv_neighbors_spec; destruct h 
         as [h h']; split; try assumption; apply H4; assumption.
       }
-      unfold PrintMIS. simpl (lV (LiftGraph (S x) G)).
-      simpl. rewrite -> LiftGraph_red. unfold PrintMIS in H5.
+      unfold AllMIS. simpl (lV (LiftGraph (S x) G)).
+      simpl. rewrite -> LiftGraph_red. unfold AllMIS in H5.
       apply l13_spec_mkCandidateSets; try assumption.
       apply LFMIS_cond_ref. apply eq_preserves_MIS with (X := l).
       apply list_eq_trans with
@@ -262,10 +262,10 @@ Proof.
     assert (MaximalIndSet_lGraph (LiftGraph (S x) G) l').
     apply eq_preserves_MIS with (X := l). apply list_eq_symmetric.
     assumption. simpl. apply MaximalIndSet_eq_lGraph in H. assumption. 
-    unfold PrintMIS. simpl.
-    unfold PrintMIS in H3. simpl in H3.
+    unfold AllMIS. simpl.
+    unfold AllMIS in H3. simpl in H3.
     rewrite -> LiftGraph_red.
-    induction ((mkSetsPrintMIS x (LiftGraph x G))).
+    induction ((mkSetsAllMIS x (LiftGraph x G))).
     inversion H3. destruct H3.
     {
       subst.
@@ -306,4 +306,4 @@ Proof.
 }
 Qed.
 
-Print Assumptions PrintMIS_complete.
+Print Assumptions AllMIS_complete.

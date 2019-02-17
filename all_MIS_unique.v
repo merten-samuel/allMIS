@@ -9,22 +9,22 @@ Require Import MIS_basics.
 Require Import all_MIS.
 Require Import all_MIS_sound.
 
-Theorem PrintMIS_unique :
-  forall G, NoDuplicates' (PrintMIS G).
+Theorem AllMIS_unique :
+  forall G, NoDuplicates' (AllMIS G).
 Proof.
   intros G. induction G using InducedGraph_ind.
-  unfold PrintMIS. simpl. constructor. intros H.
+  unfold AllMIS. simpl. constructor. intros H.
   inversion H. constructor.
-  (*generalize (PrintMIS_complete (LiftGraph x G)). intros. *)
+  (*generalize (AllMIS_complete (LiftGraph x G)). intros. *)
   generalize I. intros.
-  generalize (PrintMIS_correct (LiftGraph x G)). intros.
-  generalize (PrintMIS_correct (LiftGraph (S x) G)). intros.
+  generalize (AllMIS_correct (LiftGraph x G)). intros.
+  generalize (AllMIS_correct (LiftGraph (S x) G)). intros.
   generalize I. intros.
-  (*generalize (PrintMIS_complete (LiftGraph (S x) G)). intros. *) (*sick chiasmus dawg *) 
+  (*generalize (AllMIS_complete (LiftGraph (S x) G)). intros. *) (*sick chiasmus dawg *) 
   {
-    unfold PrintMIS in *. simpl in *.
+    unfold AllMIS in *. simpl in *.
     rewrite -> LiftGraph_red in *; try omega. 
-    revert H H0 H1 H2 IHG. generalize (mkSetsPrintMIS x (LiftGraph x G)).
+    revert H H0 H1 H2 IHG. generalize (mkSetsAllMIS x (LiftGraph x G)).
     intros. induction l. constructor. inversion IHG. subst.
     unfold mkCandidateSets. simpl (lV (LiftGraph (S x) G)).
     cbv iota beta. fold mkCandidateSets.
@@ -348,4 +348,4 @@ Proof.
 Qed.
 
 
-Print Assumptions PrintMIS_unique.
+Print Assumptions AllMIS_unique.

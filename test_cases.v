@@ -56,7 +56,7 @@ Qed.
 Definition test_graph1 :=
   mkListGraph 2 edge_list1 edge_list1_irref edge_list1_symm.
 
-Example MIS_test1 : PrintMIS test_graph1 = (1::0::nil)::nil.
+Example MIS_test1 : AllMIS test_graph1 = (1::0::nil)::nil.
 Proof.
   reflexivity.
 Qed.
@@ -85,7 +85,7 @@ Qed.
 Definition test_graph2 :=
   mkListGraph 5 edge_list2 edge_list2_irref edge_list2_symm.
 
-Example MIS_test2 : PrintMIS test_graph2 = (4::3::2::1::0::nil)::nil.
+Example MIS_test2 : AllMIS test_graph2 = (4::3::2::1::0::nil)::nil.
 Proof.
   reflexivity.
 Qed.
@@ -115,7 +115,7 @@ Qed.
 Definition test_graph3 :=
   mkListGraph 2 edge_list3 edge_list3_irref edge_list3_symm.
 
-Example MIS_test3 : PrintMIS test_graph3 = (1::nil)::(0::nil)::nil.
+Example MIS_test3 : AllMIS test_graph3 = (1::nil)::(0::nil)::nil.
 Proof.
   reflexivity. 
 Qed.
@@ -151,7 +151,7 @@ Qed.
 Definition test_graph4 :=
   mkListGraph 3 edge_list4 edge_list4_irref edge_list4_symm.
 
-Example MIS_test4 : PrintMIS test_graph4 = (1::nil)::(2::nil)::(0::nil)::nil.
+Example MIS_test4 : AllMIS test_graph4 = (1::nil)::(2::nil)::(0::nil)::nil.
 Proof. reflexivity. Qed.
 
 (*
@@ -183,7 +183,7 @@ Qed.
 Definition test_graph5 :=
   mkListGraph 3 edge_list5 edge_list5_irref edge_list5_symm.
 
-Example MIS_test5 : PrintMIS test_graph5 = ((1::nil)::(2::0::nil)::nil).
+Example MIS_test5 : AllMIS test_graph5 = ((1::nil)::(2::0::nil)::nil).
 Proof. reflexivity. Qed.
 
 Definition edge_list6 :=
@@ -211,5 +211,5 @@ Qed.
 Definition test_graph6 :=
   mkListGraph 4 edge_list6 edge_list6_irref edge_list6_symm.
 
-Example MIS_test6 : PrintMIS test_graph6 = ((3::1::nil)::(2::0::nil)::nil).
+Example MIS_test6 : AllMIS test_graph6 = ((3::1::nil)::(2::0::nil)::nil).
 Proof. reflexivity. Qed.

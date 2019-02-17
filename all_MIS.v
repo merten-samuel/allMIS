@@ -7,72 +7,6 @@ Require Import lex_order.
 Require Import graphs_nondep.
 Require Import MIS_basics.
 
-(* Fixpoint mkCandidateSet_aux G V (l : list (list nat)) : list (list nat) := *)
-(*     match l with *)
-(*     | nil => nil *)
-(*     | cons cand l' => *)
-(*         if independent_lGraph G (V-1 :: cand) then (V' :: cand) :: mkCandidateSets G l' *)
-(*         else if isMIS G (V-1 :: rmvNeighbors V-1 G cand) *)
-(*              then if LFMIS_dec (LiftGraph V' G) (rmvNeighbors V' G cand) cand *)
-(*                   then (V' :: rmvNeighbors V' G cand) :: cand :: mkCandidateSets G l' *)
-(*                   else cand :: mkCandidateSets G l' *)
-(*              else cand :: mkCandidateSets G l' *)
-(*     end. *)
-  
-(* Require Import ExtLib.Data.Monads.StateMonad ExtLib.Structures.Monads. *)
-(* Import MonadNotation. *)
-(* Local Open Scope monad_scope. *)
-(* Import ListNotations. *)
-(* Section s. *)
-(*   Definition stack := list nat. *)
-(*   Definition gameValue : Type := nat. *)
-(*   Definition gameState : Type := (stack *(list nat)). *)
-  
-(*   Definition pop : stack -> (option nat * stack) := *)
-(*     fun l : stack =>  *)
-(*       match l with *)
-(*       | nil => (None, []) *)
-(*       | x::xs => (Some x, xs) *)
-(*       end. *)
-
-(*   Definition push : list nat -> stack -> (unit * stack) := *)
-(*     fun nats st => *)
-(*       (tt, nats ++ st). *)
-
-(*   Variable m : Type -> Type. *)
-(*   Definition popS : state stack (option nat) := *)
-(*     mkState pop. *)
-
-(*   Definition pushS (l : list nat) : state stack unit := *)
-(*     mkState (push l). *)
-
-(*   Context {Monad_m : Monad m}. *)
-(*   Context {State_m : MonadState gameState m}. *)
-(* (*   Definition stackS (s : nat) : m gameState := *) *)
-(* (*     x <- get;; *) *)
-(* (*       let (r, s) := x in  *) *)
-(* (*       ret x. *) *)
-  
-
-(* End s. *)
-
-(* Definition main := *)
-(*   evalState  (stackS (state gameState)) ([], []). *)
-
-(* Compute main. *)
-
-
-
-  (* CoFixpoint SetLooper (Q : Vert.t) (n : nat) : comp nat := *)
-  (*   if negb (Vert.is_empty Q) then *)
-  (*     (match Vert.min_elt Q with *)
-  (*      | Some elt => n1 <- (SetLooper (Vert.remove elt Q) (n + 1)); *)
-  (*                                   Ret n1 *)
-  (*      | None => Ret n *)
-  (*     end) *)
-  (*   else *)
-  (*     Ret n. *)
-
 Require Import FunInd.
 Function mkCandidateSets (G : lGraph) (l : list (list nat)) 
 : list (list nat) :=
@@ -199,68 +133,15 @@ Proof.
   apply mkCandidateSets_mkCS.
 Qed.  
 
-(* mkCandidateSets =  *)
-(* fix mkCandidateSets (G : lGraph) (l : list (list nat)) {struct l} : *)
-(*   list (list nat) := *)
-(*   match lV G with *)
-(*   | 0 => nil :: nil *)
-(*   | S V' => *)
-(* THis needs to be wrapped as a function *)
-
-    (* if negb (misSet.is_empty Q) then *)
-    (*   match misSet.remove_min Q with *)
-    (*   | Some (Ss, Qr) => *)
-    (*     let miSets := mkNewMisets Qr Ss G in *)
-    (*     out <- AllMIS_aux miSets (Ss :: output) G; *)
-    (*       Ret out *)
-
-
-(*       match l with *)
-(*       | nil => nil *)
-(*       | cand :: l' => *)
-        (* While queue not empty do *)
-(*           if independent_lGraph G (V' :: cand) *)
-(*           then (V' :: cand) :: mkCandidateSets G l' *)
-(*           else *)
-(*            if isMIS G (V' :: rmvNeighbors V' G cand) *)
-(*            then *)
-(*             if LFMIS_dec (LiftGraph V' G) (rmvNeighbors V' G cand) cand *)
-(*             then *)
-(*              (V' :: rmvNeighbors V' G cand) *)
-(*              :: cand :: mkCandidateSets G l' *)
-(*             else cand :: mkCandidateSets G l' *)
-(*            else cand :: mkCandidateSets G l' *)
-(*       end *)
-
-
-
-(*   end *)
-
-
-Fixpoint mkSetsPrintMIS (V : nat) (G : lGraph) : list (list nat) :=
+Fixpoint mkSetsAllMIS (V : nat) (G : lGraph) : list (list nat) :=
   match V with
   | O => (nil) :: nil
   | S V' =>
-    mkCandidateSets G (mkSetsPrintMIS V' (LiftGraph V' G))
+    mkCandidateSets G (mkSetsAllMIS V' (LiftGraph V' G))
   end.
 
-Definition PrintMIS G :=
-  mkSetsPrintMIS (lV G) G.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Definition AllMIS G :=
+  mkSetsAllMIS (lV G) G.
 
 Theorem min_mkCandidateSets : forall G l, mkCandidateSets (LiftGraph 0 G) l = (nil)::nil.
 Proof.
@@ -283,13 +164,13 @@ Qed.
 
 
 Theorem l5_spec_mkCandidateSets : forall G l x,
-  In l (PrintMIS (LiftGraph x G)) ->
+  In l (AllMIS (LiftGraph x G)) ->
   Independent_lGraph (LiftGraph (S x) G) (x :: l) ->
-    In (x::l) (PrintMIS (LiftGraph (S x) G)).
+    In (x::l) (AllMIS (LiftGraph (S x) G)).
 Proof.
-  intros. unfold PrintMIS. simpl. rewrite -> LiftGraph_red.
-  unfold PrintMIS in H. simpl in H.
-  induction ((mkSetsPrintMIS x (LiftGraph x G))). inversion H.
+  intros. unfold AllMIS. simpl. rewrite -> LiftGraph_red.
+  unfold AllMIS in H. simpl in H.
+  induction ((mkSetsAllMIS x (LiftGraph x G))). inversion H.
   destruct H as [H | H]. subst. unfold mkCandidateSets.
   simpl (lV (LiftGraph (S x) G)). cbv beta iota. fold mkCandidateSets.
   apply independent_spec in H0. unfold independent_lGraph.
@@ -497,7 +378,7 @@ Proof.
 Qed.
 
 
-Theorem mkCS_implies_PrintMIS :
+Theorem mkCS_implies_AllMIS :
   forall (P : list (list nat) -> Prop) G Lin Lout, 
      mkCS (lV G) G Lin Lout ->
      P Lout -> P (mkCandidateSets G Lin).

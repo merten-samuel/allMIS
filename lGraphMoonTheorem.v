@@ -19,8 +19,6 @@ Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
         InA (equivlistA eq) x l) ->
     MIS_set_lGraph G l.
 
-
-
   Fixpoint enumerate (x : nat) :=
     match x with
     | O => 0::nil
@@ -378,17 +376,17 @@ Proof.
   constructor; try split; intros; auto.
 Qed.
 
-Lemma PrintMIS_correct : forall G: lGraph,
-  MIS_set_lGraph G (PrintMIS G).
+Lemma AllMIS_correct : forall G: lGraph,
+  MIS_set_lGraph G (AllMIS G).
 Proof.
   intros.
   constructor.
   {
     intros.
-    apply all_MIS_sound.PrintMIS_correct; auto.
+    apply all_MIS_sound.AllMIS_correct; auto.
   }
   {
-    pose proof (all_MIS_unique.PrintMIS_unique G). 
+    pose proof (all_MIS_unique.AllMIS_unique G). 
     induction H.
     constructor.
     subst.
@@ -409,7 +407,7 @@ Proof.
   }
   {
     intros.
-    pose proof (PrintMIS_complete G); auto.
+    pose proof (AllMIS_complete G); auto.
     unfold MIS_basics.MaximalIndSet_lGraph in H0.
     apply H0 in H; auto.
     destruct H; intuition.
@@ -444,11 +442,12 @@ Proof.
   rewrite <- H1; auto.
 Qed.
 
-Theorem PrintMIS_correct_and_small : forall G: lGraph,
-    MIS_set_lGraph G (PrintMIS G) /\
-    INR (length (PrintMIS G)) <= I (lV G).
+Theorem AllMIS_correct_and_small : forall G: lGraph,
+    MIS_set_lGraph G (AllMIS G) /\
+    INR (length (AllMIS G)) <= I (lV G).
 Proof.
   intros G; split.
-  { apply PrintMIS_correct. }
-  apply MIS_bound. apply PrintMIS_correct.
+  { apply AllMIS_correct. }
+  apply MIS_bound. apply AllMIS_correct.
 Qed.  
+
