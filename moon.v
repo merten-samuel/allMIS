@@ -1,5 +1,5 @@
 Require Import SetoidList Omega.
-Require Import moon_lemma.
+Require Import moon_lemmas.
 Require Import graph_basics.
 Require Import all_MIS_unique.
 Require Import GenGraph.

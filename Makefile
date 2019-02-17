@@ -44,7 +44,7 @@ CAMLFLAGS         := $(COQMF_CAMLFLAGS)
 HASNATDYNLINK     := $(COQMF_HASNATDYNLINK)
 
 Makefile.conf: 
-	coq_makefile -R . Top all_MIS_complete.v all_MIS_Refine.v all_MIS_sound.v all_MIS_unique.v all_MIS.v eqtype.v explicit_graph.v fintype.v GenGraphAllMIS.v GenGraph.v graph_basics.v graphs_nondep.v index.v lex_order.v lGraphMoonTheorem.v MIS_basics.v moon_lemma.v test_cases.v wf_combinators.v -o Makefile
+	coq_makefile -R . Top all_MIS_complete.v all_MIS_refine.v all_MIS_sound.v all_MIS_unique.v all_MIS.v eqtype.v fintype.v GenGraphAllMIS.v GenGraph.v graph_basics.v graphs_nondep.v index.v lex_order.v MIS_basics.v moon_lemmas.v moon.v test_cases.v toplevel.v wf_combinators.v -o Makefile
 
 # This file can be created by the user to hook into double colon rules or
 # add any other Makefile code he may need
