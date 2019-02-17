@@ -1400,8 +1400,8 @@ fourier.
 Qed.
 
 
-
-Lemma Monontonic_helper: forall n:nat, I n < I (S n).
+(*** The hardest technical lemma --- forall n, I(n) < I(n+1)  ***)
+Lemma Monotonic_helper: forall n:nat, I n < I (S n).
 Proof.
 intros.
 unfold I.
@@ -1681,94 +1681,8 @@ Qed.
 
       
  
+ (*** Here we prove that the function I is strictly increasing for all values of      n.   ****)
  
-  (* Need to show that  4 * Rpower 3 ((INR n - 4) / 3) <
-2 * Rpower 3 (INR (n - 1) / 3) 
-
-    We can write this as 4 * Rpower 3 (INR n -1)/3 * Rpower 3 -1
-    And, 4/3 < 2.
-    (as long as    
-    
-  induction n0.
-  {
-    left.
-    simpl.
-    reflexivity.
-  }
-  {
-      remember (S n0).
-      induction (S n0).
-      {
-        rewrite Heqn1.
-      left;simpl;reflexivity.
-      
-    }
-    {
-      remember (S n2).
-      induction (S n2).
-      {
-        rewrite Heqn1.
-        rewrite Heqn3.
-        left;simpl;reflexivity.
-      }
-      {
-        apply IHn4.
-        assert ((S (S (S n0))) = n0 + 3)%nat.
-        omega.
-        rewrite H0.
-        
-        simpl in H.
-  }
-  
-    {
-      
-  destruct H.
-
-  induction n0.
-  {
-    left.
-    simpl.
-    reflexivity.
-  }
-  {
-    induction n0.
-    {
-      right;left;simpl;reflexivity.
-    }
-    { 
-      induction n0.
-      {
-        right;right;simpl;reflexivity.
-      }
-      { 
-        destruct IHn0.
-        right;left.
-        assert ((S (S (S n0))) = n0 + 3)%nat.
-        omega.
-        assert ((S (S n0)) = n0 + 2)%nat.
-        omega.
-        rewrite H0.
-        assert (3 mod 3 = 0)%nat.
-        simpl;reflexivity.
-        assert ((n0 + 3) mod 3 = n0 mod 3).
-        replace n0 with (n0 + 0)%nat at 2.
-        rewrite <-H2 at 3.
-        symmetry.
-        apply Nat.add_mod_idemp_r with (n:=3%nat).
-        omega.
-        omega.
-        rewrite H3.
-        rewrite H1 in H.
-        assert ((n0 + 2) mod 3 = (n0 mod 3 + (2 mod 3)) mod 3)%nat.
-        
-        apply Nat.add_mod with (n:=3%nat).
-        omega.
-        rewrite H in H4.
-  
-  intros.
-  omega.
-*)
-
 Theorem I_increasing:  forall m :nat, forall n:nat, ((n<m)%nat -> I n < I m).
 Proof.
 induction m.
@@ -1795,18 +1709,19 @@ induction m.
       apply Rlt_trans with (r2:= I m).
       apply IHm.
       exact H1.
-      apply Monontonic_helper.
+      apply Monotonic_helper.
     }
     destruct H1.
     {
       rewrite H1.
-      apply Monontonic_helper.
+      apply Monotonic_helper.
     }
     {
       omega.
     }
   }
 Qed.
+(*** The function I is monotonically increasing, i.e., n<=m -> I(n) <= I(m) **)
 Theorem I_monotonic:  forall m :nat, forall n:nat, ((n<=m)%nat -> I n <= I m).
 Proof.
 intros.
