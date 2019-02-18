@@ -8,6 +8,7 @@ Require Import all_MIS.
 Require Import all_MIS_complete.
 Require Import all_MIS_unique.
 Require Import all_MIS_refine.
+
 Import MIS_basics.
 
 Inductive MIS_set_lGraph (G : lGraph) (l : list (list nat)) : Prop :=
@@ -416,8 +417,9 @@ Proof.
   }
 Qed.
 
+
+Require Import moon_lemmas.
 Require Import Reals.
-Require Import moon_lemma.
 
 Lemma MIS_bound : forall G l,
     MIS_set_lGraph G l -> INR (length l) <= I (lV G).
