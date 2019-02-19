@@ -12,6 +12,7 @@ Require Import Permutation.
 Require Import all_MIS_sound.
 Require Import all_MIS_complete.
 Require Import all_MIS_unique.
+Require Import SetoidList.
 
 
 
@@ -1716,6 +1717,39 @@ Section noDepRefine.
       - constructor. intros H5.
         apply H2. apply list_eq_in_tail. auto. auto.
     + firstorder.
+  Qed.
+  
+  Lemma NoDuplicates'_iff_NoDupA_equivlist :
+    forall l, NoDuplicates' l <-> NoDupA (equivlistA eq) l.
+  Proof.
+    intros l. induction l.
+    split; intros; constructor.
+    split; intros; constructor; inversion H; subst.
+    intros HContra. apply InA_alt in HContra.
+    destruct HContra. destruct H0. apply H2.
+    eapply list_eq_in_spec; eauto.
+    unfold lex_order.list_eq. split;
+    intros. 
+    assert (InA eq x0 a). apply InA_alt.
+    eexists; eauto. rewrite H0 in H5.
+    apply InA_alt in H5. do 2 destruct H5.
+    subst. auto. 
+    assert (InA eq x0 x). apply InA_alt.
+    eexists; eauto. rewrite <- H0 in H5.
+    apply InA_alt in H5. do 2 destruct H5.
+    subst. auto. apply IHl; auto.
+    intros Hcontra. apply H2.
+    apply list_eq_in_witness in Hcontra.
+    destruct Hcontra. destruct H0.
+    apply InA_alt. eexists; split; eauto.
+    unfold equivlistA. split; intros;
+    apply InA_alt in H4; do 2 destruct H4; subst.
+    apply H0 in H5. apply InA_alt.
+    eexists; split; eauto.
+    apply H0 in H5.
+    apply InA_alt.
+    eexists; split; eauto.
+    apply IHl. auto.
   Qed.
 
   Lemma stackMIS_unique : 

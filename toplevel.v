@@ -454,14 +454,26 @@ Proof.
   apply MIS_bound. apply AllMIS_correct.
 Qed.  
 
-Theorem StackMIS_small : forall G: lGraph,
+Theorem stackMIS_correct_and_small : forall G: lGraph,
     lV G <> 0%nat ->
+    MIS_set_lGraph G (snd (stackMIS G (startState G))) /\
     INR (length (snd (stackMIS G (startState G)))) <= I (lV G).
 Proof.
-  intros G Hx.
+  intros G Hx; split.
+  constructor.
+  intros. 
+  apply (@stackMIS_sound G _ Hx H).
+  generalize (@stackMIS_unique G Hx).
+  intros. apply NoDuplicates'_iff_NoDupA_equivlist.
+  auto. intros. 
+  generalize (@stackMIS_complete G x Hx H).
+  intros. apply InA_alt.
+  do 2 destruct H0. exists x0. split; auto.
+  constructor; intros; apply InA_alt;
+  apply InA_alt in H2; do 2 destruct H2; subst;
+  eexists; split; eauto; apply H0; auto.
   rewrite <-(@Permutation.Permutation_length _ (AllMIS G)).
   apply MIS_bound; apply AllMIS_correct.
   apply Permutation.Permutation_sym.
   apply stackMIS_perm_AllMIS; auto.
-Qed.  
-
+Qed.
